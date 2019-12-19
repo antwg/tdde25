@@ -3,7 +3,7 @@ This repository contains a passive PyCommandCenter-based bot for StarCraft II. I
 
 ## Setup for creating your own bot
 
-1. Locate your own fork ("copy") of this project and its repository. If you are participating in TDDD92, you should *not* create your own fork!  Instead, begin by registering your group in Webreg.  We periodically run a script that forks this project for all registered groups, placing projects in the [TDDD92-2019 group](https://gitlab.liu.se/tddd92-2019).  We will require you to use these projects and repositories.
+1. Locate your own fork ("copy") of this project and its repository. If you are participating in TDDD92 or TDDE25, you should *not* create your own fork!  Instead, begin by registering your group in Webreg.  We periodically run a script that forks this project for all registered groups, placing projects in the [TDDD92-2019 group](https://gitlab.liu.se/tddd92-2019) or the [TDDE25-2019 group](https://gitlab.liu.se/tdde25-2019).  We will require you to use these projects and repositories.
 
 2. Now clone your new repository using the following command: `git clone <path>`, where `<path>` is shown when the blue button *Clone* in the top-right corner on your repository page. If you have configured SSH-access, then use the SSH link, otherwise use the HTTP link.
 
