@@ -14,5 +14,5 @@ workspace.xml
 usage.statistics.xml
 tasks.xml
 
-.idea/misc.xml
-*.iml
+test/tdde25-scai.drawio
+maps/InterloperTest.SC2Map

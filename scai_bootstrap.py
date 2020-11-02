@@ -32,14 +32,14 @@ class ScaiBootstrap(IDABot):
         bot1 = cls()
         # bot2 = cls()
 
-        participant_1 = create_participants(Race.Terran, bot1)
+        participant_1 = create_participants(Race.Terran, bot1, "Gerald - SCAI-07")
         # participant_2 = create_participants(Race.Terran, bot2)
         participant_2 = create_computer(Race.Random, Difficulty.Easy)
 
         coordinator.set_real_time(True)
         coordinator.set_participants([participant_1, participant_2])
         coordinator.launch_starcraft()
-        path = os.path.join(os.getcwd(), "maps", "InterloperTest.SC2Map")
+        path = os.path.join(os.getcwd(), "maps", "InterloperTest-adjusted.SC2Map")
 
         coordinator.start_game(path)
 

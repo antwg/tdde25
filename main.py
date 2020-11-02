@@ -2,6 +2,7 @@ from scai_bootstrap import *
 
 
 class MyAgent(ScaiBootstrap):
+    """In game bot."""
 
     def awake(self):
         """Called on start up, passed from IDABot.on_game_start()."""
