@@ -1,7 +1,10 @@
-from scai_bootstrap import *
+import time
+
+from scai_backbone import *
 
 
-class MyAgent(ScaiBootstrap):
+# ZW
+class MyAgent(ScaiBackbone):
     """In game bot."""
 
     def awake(self):
@@ -14,4 +17,4 @@ class MyAgent(ScaiBootstrap):
 
 
 if __name__ == "__main__":
-    MyAgent.main()
+    MyAgent.bootstrap()

@@ -5,7 +5,8 @@ from typing import Optional
 from library import *
 
 
-class ScaiBootstrap(IDABot):
+# ZW
+class ScaiBackbone(IDABot):
     def __init__(self):
         IDABot.__init__(self)
 
@@ -14,7 +15,7 @@ class ScaiBootstrap(IDABot):
         self.awake()
 
     def awake(self):
-        """Event when game starts. Meant to be inherited."""
+        """Event on game start. Meant to be inherited."""
         pass
 
     def on_step(self):
@@ -26,7 +27,7 @@ class ScaiBootstrap(IDABot):
         pass
 
     @classmethod
-    def main(cls):
+    def bootstrap(cls):
         coordinator = Coordinator(r"C:\Program Files (x86)\StarCraft II\Versions\Base81433\SC2_x64.exe")
 
         bot1 = cls()

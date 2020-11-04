@@ -1,0 +1,56 @@
+
+Vad som behöver göras enligt:
+https://gitlab.liu.se/tdde25/starcraft/-/wikis/home   (4/11-2020)
+
+___Uppgift 1:___
+
+- Skriva print_debug() i debug.py
+
+- Få SCVs att samla mineraler
+
+- Producera flera SCVs (som samlar)
+
+- Konstruera supply depot när behövs
+
+- Konstruera Gas Refineries och samla gas
+
+
+___Uppgift 2:___
+
+- Skriva print_unit_info() och print_unit_overview() i debug.py
+
+- Konstruera en barrack
+
+- Producera 8 marines (och underhåll)
+
+- Försvara choke-points
+
+- Expandera och underhåll ny bas
+
+- Försvara expansion
+
+
+___Uppgift 3:___
+
+- Konstruera bunker vid försvarsposition och fyll den
+
+- Konstruera en factory
+
+- Konstruera en tech-lab på factoryn
+
+- Producera 2 siege tanks per trupp
+
+- Sätt siege tanks i siege mode vid försvar
+
+- Scouta fienden
+
+- Attackera fienden tills vunnit
+
+
+___Extra:___
+
+- Förbättra SCVs navigering
+
+- Implementera olika strategier
+
+- Implementera MICRO taktiker
