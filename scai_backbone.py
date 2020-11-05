@@ -14,17 +14,9 @@ class ScaiBackbone(IDABot):
         IDABot.on_game_start(self)
         self.awake()
 
-    def awake(self):
-        """Event on game start. Meant to be inherited."""
-        pass
-
     def on_step(self):
         IDABot.on_step(self)
         self.update()
-
-    def update(self):
-        """Event on regular update. Meant to be inherited."""
-        pass
 
     @classmethod
     def bootstrap(cls):

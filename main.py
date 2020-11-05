@@ -7,13 +7,13 @@ from scai_backbone import *
 class MyAgent(ScaiBackbone):
     """In game bot."""
 
-    def awake(self):
-        """Called on start up, passed from IDABot.on_game_start()."""
-        pass
-
-    def update(self):
+    def on_game_start(self):
         """Called each cycle, passed from IDABot.on_step()."""
-        pass
+        ScaiBackbone.on_game_start(self)
+
+    def on_step(self):
+        """Called on start up, passed from IDABot.on_game_start()."""
+        ScaiBackbone.on_step(self)
 
 
 if __name__ == "__main__":
