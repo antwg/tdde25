@@ -6,6 +6,9 @@ from library import *
 
 
 # ZW
+import personal
+
+
 class ScaiBackbone(IDABot):
     def __init__(self):
         IDABot.__init__(self)
@@ -20,7 +23,7 @@ class ScaiBackbone(IDABot):
 
     @classmethod
     def bootstrap(cls):
-        coordinator = Coordinator(r"C:\Program Files (x86)\StarCraft II\Versions\Base81433\SC2_x64.exe")
+        coordinator = Coordinator(personal.game_dir)
 
         bot1 = cls()
         # bot2 = cls()
