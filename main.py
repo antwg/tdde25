@@ -13,13 +13,15 @@ class MyAgent(IDABot):
 
     def on_step(self):
         IDABot.on_step(self)
+        self.print_debug()
+
+    def print_debug(self):
+        """Funktion that displays tge units type, id and enumereringsindex"""
 
         unit_list = self.get_my_units()
-        index_unit_list = list(enumerate(unit_list))
-
-        # writes/displays all the moving units type, id and index
-        for unit_tuple in index_unit_list:
-            print_debug(unit_tuple, self)
+        for i, unit in list(enumerate(unit_list)):
+            text = str((unit.unit_type, "ID:", unit.id, "I:", i))
+            self.map_tools.draw_text(unit.position, text, Color(255, 255, 255))
 
 
 def main():
@@ -41,15 +43,6 @@ def main():
 
     while coordinator.update():
         pass
-
-
-def print_debug(unit_tuple, bot):
-    """Funktion that displays tge units type, id and enumereringsindex"""
-    text1 = str(unit_tuple[1].unit_type)
-    text2 = str(unit_tuple[1].id)
-    text3 = str(unit_tuple[0])
-    text = text1 + " ID: " + text2 + " I: " + text3
-    bot.map_tools.draw_text(unit_tuple[1].position, text, Color(255, 255, 255))
 
 
 if __name__ == "__main__":
