@@ -1,6 +1,7 @@
 import time
 
 from scai_backbone import *
+from jobs.employer import Employer
 
 
 # ZW
@@ -10,6 +11,9 @@ class MyAgent(ScaiBackbone):
     def on_game_start(self):
         """Called each cycle, passed from IDABot.on_step()."""
         ScaiBackbone.on_game_start(self)
+
+        for unit in self.get_my_units():
+            Employer.assign(unit)
 
     def on_step(self):
         """Called on start up, passed from IDABot.on_game_start()."""
@@ -24,6 +28,7 @@ class MyAgent(ScaiBackbone):
         for i, unit in list(enumerate(unit_list)):
             text = str((unit.unit_type, "ID:", unit.id, "I:", i))
             self.map_tools.draw_text(unit.position, text, Color(255, 255, 255))
+
 
 
 if __name__ == "__main__":
