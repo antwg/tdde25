@@ -15,11 +15,9 @@ class ScaiBackbone(IDABot):
 
     def on_game_start(self):
         IDABot.on_game_start(self)
-        self.awake()
 
     def on_step(self):
         IDABot.on_step(self)
-        self.update()
 
     @classmethod
     def bootstrap(cls):
