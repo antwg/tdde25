@@ -18,6 +18,25 @@ class MyAgent(ScaiBackbone):
         ScaiBackbone.on_step(self)
         print_debug(self)
         self.build_supply_depot()
+        self.mine_minerals()
+
+    def get_my_workers(self):
+        """Makes a list of all my workers"""
+        workers = []
+        for unit in self.get_my_units():
+            if unit.unit_type.is_worker:
+                workers.append(unit)
+
+        return workers
+
+    def mine_minerals(self):
+        for unit in self.get_my_workers():
+            if unit.is_idle:
+                unit.right_click(random.choice(self.get_start_base_minerals()))
+
+    def get_start_base_minerals(self):
+        start_location = self.base_location_manager.get_player_starting_base_location(PLAYER_SELF)
+        return start_location.minerals
 
     def build_supply_depot(self):
         """Builds supply depot when necessary"""
