@@ -10,11 +10,11 @@ class MyAgent(ScaiBackbone):
     """In game bot."""
 
     def on_game_start(self):
-        """Called each cycle, passed from IDABot.on_step()."""
+        """Called on start up, passed from IDABot.on_game_start()."""
         ScaiBackbone.on_game_start(self)
 
     def on_step(self):
-        """Called on start up, passed from IDABot.on_game_start()."""
+        """Called each cycle, passed from IDABot.on_step()."""
         ScaiBackbone.on_step(self)
         print_debug(self)
         test = self.base_location_manager.get_player_starting_base_location(PLAYER_SELF).position
