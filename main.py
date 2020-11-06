@@ -24,8 +24,12 @@ class MyAgent(ScaiBackbone):
         self.build_supply_depot()
         self.mine_minerals()
 
+    def mine_minerals(self):
+        for unit in self.get_my_workers():
+            if unit.is_idle:
+                unit.right_click(random.choice(self.get_start_base_minerals()))
+
     def get_my_workers(self):
-        """Makes a list of all my workers"""
         workers = []
         for unit in self.get_my_units():
             if unit.unit_type.is_worker:
@@ -33,25 +37,23 @@ class MyAgent(ScaiBackbone):
 
         return workers
 
-    def mine_minerals(self):
-        for unit in self.get_my_workers():
-            if unit.is_idle:
-                unit.right_click(random.choice(self.get_start_base_minerals()))
-
     def get_start_base_minerals(self):
         start_location = self.base_location_manager.get_player_starting_base_location(PLAYER_SELF)
         return start_location.minerals
 
-    def build_supply_depot(self): #AW
+  #  def get_my_workers(self):
+    #       return (lambda unit: unit.unit_type.is_worker, self.get_all_units())
+
+    def build_supply_depot(self):  # AW
         """Builds supply depot when necessary"""
         if (self.current_supply / self.max_supply) <= 0.8 and \
                 self.max_supply < 200 and self.minerals >= 100:
             Unit.build((random.choice(get_my_workers(self)),
-                       UNIT_TYPEID.TERRAN_SUPPLYDEPOT,
-                       BuildingPlacer.get_build_location_near(self.base_location_manager.get_player_starting_base_location(PLAYER_SELF),
-                                                              UNIT_TYPEID.TERRAN_SUPPLYDEPOT))
-    def get_my_workers(self):
-        filter(lambda unit: unit.unit_type.is_worker, self.get_all_units())
+                        UNIT_TYPEID.TERRAN_SUPPLYDEPOT,
+                        BuildingPlacer.get_build_location_near(
+                            self.base_location_manager.get_player_starting_base_location(PLAYER_SELF),
+                            UNIT_TYPEID.TERRAN_SUPPLYDEPOT))
+
 
 if __name__ == "__main__":
     MyAgent.bootstrap()
