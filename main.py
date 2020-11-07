@@ -21,7 +21,7 @@ class MyAgent(ScaiBackbone):
             if job:
                 job.on_step(self, unit)
             elif not Employer.is_banned(unit):
-                Employer.assign(unit)
+                Employer.assign(self, unit)
 
         # DP
     def print_debug(self):
@@ -33,5 +33,8 @@ class MyAgent(ScaiBackbone):
             self.map_tools.draw_text(unit.position, text, Color(255, 255, 255))
 
 
+
+
 if __name__ == "__main__":
     MyAgent.bootstrap()
+

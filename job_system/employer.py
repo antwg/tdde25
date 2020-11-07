@@ -1,3 +1,5 @@
+from typing import Type
+
 from job_system.economics import *
 from job_system.structures import *
 
@@ -9,25 +11,49 @@ class Employer:
     # Blacklist units from work
     ban: set = set()
 
+    jobs: list
+
     @classmethod
-    def assign(cls, unit: Unit) -> bool:
+    def assign(cls, bot: IDABot, unit: Unit) -> bool:
         """Assign a unit to a new job."""
         # Try to find current job anf if found remove unit from it
         before_job = find_unit_job(unit)
         if before_job:
-            before_job.fire(unit)
+            Employer.fire(bot, unit)
 
-        """Basically the assignment process so far."""
-        if Gatherer.hire(unit):
+        if not cls.is_banned(unit) and Job.is_proper(bot, unit):
+            """Basically the assignment process so far."""
+            if Gatherer.is_qualified(bot, unit):
+                cls.add(bot, unit, Gatherer)
+                return True
+            elif CommandCenter.is_qualified(bot, unit):
+                cls.add(bot, unit, CommandCenter)
+                return True
+            elif Structure.is_qualified(bot, unit):
+                cls.add(bot, unit, Structure)
+                return True
+
+        # Oof. Harsh life
+        cls.ban_unit(unit)
+        print("Unit", unit, "couldn't find work and is banned!")
+        return False
+
+    @classmethod
+    def fire(cls, bot: IDABot, unit: Unit) -> bool:
+        job = find_unit_job(unit)
+        if job:
+            job.on_discharge(bot, unit)
+            cls.jobs.remove(job)
             return True
-        elif CommandCenter.hire(unit):
+        return False
+
+    @classmethod
+    def add(cls, bot: IDABot, unit: Unit, job: Type[Job]) -> bool:
+        have_job = find_unit_job(unit)
+        if not have_job:
+            cls.jobs.append(job(bot, unit))
             return True
-        elif Structure.hire(unit):
-            return True
-        else:
-            # Oof. Harsh life
-            cls.ban_unit(unit)
-            return False
+        return False
 
     @classmethod
     def is_banned(cls, unit: Unit) -> bool:
@@ -38,34 +64,21 @@ class Employer:
             return False
 
     @classmethod
-    def ban_unit(cls, unit: Unit):
+    def ban_unit(cls, unit: Unit) -> bool:
         """Prohibit a unit from getting a job."""
         cls.ban.add(unit.id)
-        print("Unit", unit, "couldn't find work and is banned!")
+        return True
 
     @classmethod
     def load_system(cls):
         """Necessary load for Employer to work properly."""
         cls.ban = set()
-        cls.load_work()
-
-    @classmethod
-    def load_work(cls, work=Job):
-        """Necessary load for all jobs before using them."""
-        work.load_work()
-
-        for sub_work in work.__subclasses__():
-            cls.load_work(sub_work)
+        cls.jobs = list()
 
 
 # ZW
-def find_unit_job(unit: Unit, cls=Job):
-    """Finds a units job."""
-    for sub_cls in cls.__subclasses__():
-        result = find_unit_job(unit, sub_cls)
-        if result:
-            return result
-    if unit.id in cls.assigned:
-        return cls
-    else:
-        return None
+def find_unit_job(unit: Unit):
+    for job in Employer.jobs:
+        if job.id == unit.id:
+            return job
+    return None

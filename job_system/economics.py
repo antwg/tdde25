@@ -8,11 +8,11 @@ class Worker(Job):
     name: str = 'Worker -TEMPLATE-'
 
     @classmethod
-    def is_qualified(cls, unit: Unit):
+    def is_qualified(cls, bot: IDABot, unit: Unit):
         if not unit.unit_type.is_worker:
             return False
         else:
-            return super().is_qualified(unit)
+            return super().is_qualified(bot, unit)
 
 
 # ZW
@@ -21,11 +21,17 @@ class Gatherer(Worker):
 
     name: str = 'Gatherer'
 
-    @classmethod
-    def on_step(cls, bot: IDABot, unit: Unit):
-        """What kind of work the unit shall do on_step()."""
+    def on_assignment(self, bot: IDABot, unit: Unit):
+        self.click_closest_mineral(bot, unit)
 
+    def on_step(self, bot: IDABot, unit: Unit):
+        if unit.is_idle:
+            self.click_closest_mineral(bot, unit)
         super().on_step(bot, unit)
+
+    def click_closest_mineral(self, bot: IDABot, unit: Unit):
+        mineral = find_closest_mineralfield(bot, unit.position)
+        unit.right_click(mineral)
 
 
 # ZW
@@ -34,10 +40,11 @@ class Builder(Job):
 
     name: str = 'Builder'
 
-    @classmethod
-    def on_step(cls, bot: IDABot, unit: Unit):
-        """What kind of work the unit shall do on_step()."""
-        super().on_step(bot, unit)
+    def on_assignment(self, unit: Unit):
+        """Called when unit is assigned to job."""
+        unit.build(self.build_this)
+
+
 
 
 
