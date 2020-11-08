@@ -86,9 +86,8 @@ class MyAgent(ScaiBackbone):
         else:
             return False
 
-
     def build_supply_depot(self): #AW
-        """Builds supply depot when necessary"""
+        """Builds a supply depot when necessary."""
         home_base = (self.base_location_manager.
                      get_player_starting_base_location(PLAYER_SELF).position)
         home_base_2di = Point2DI(int(home_base.x), int(home_base.y))
@@ -98,9 +97,9 @@ class MyAgent(ScaiBackbone):
         worker = random.choice(self.get_my_workers())
 
         if (self.current_supply / self.max_supply) >= 0.8\
-            and self.max_supply < 200\
-            and self.minerals >= 100\
-            and not self.currently_building_supply_depot():
+                and self.max_supply < 200\
+                and self.minerals >= 100\
+                and not self.currently_building_supply_depot():
             Unit.build(worker, supply_depot, location)
 
 
