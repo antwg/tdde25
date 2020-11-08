@@ -21,10 +21,6 @@ class MyAgent(ScaiBackbone):
 
         # print_debug(self)
 
-        test = self.base_location_manager.get_player_starting_base_location(PLAYER_SELF).position
-        test2 = (int(test.x), int(test.y))
-        print(test)
-        print(test2)
         self.build_supply_depot()
         self.mine_minerals()
         self.train_scv()
@@ -78,16 +74,35 @@ class MyAgent(ScaiBackbone):
     #  def get_my_workers(self):
     #       return (lambda unit: unit.unit_type.is_worker, self.get_all_units())
 
-    def build_supply_depot(self):  # AW
+    def currently_building_supply_depot(self):
+        """"Checks if a supply depot is being built"""
+        value = 0
+        for unit in self.get_my_units():
+            if unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_SUPPLYDEPOT\
+                    and not unit.is_completed:
+                value = value + 1
+        if value >= 1:
+            return True
+        else:
+            return False
+
+
+    def build_supply_depot(self): #AW
         """Builds supply depot when necessary"""
-        if (self.current_supply / self.max_supply) <= 0.8 and \
-                self.max_supply < 200 and self.minerals >= 100:
-            Unit.build(random.choice(self.get_my_workers()),
-                       UnitType(UNIT_TYPEID.TERRAN_SUPPLYDEPOT, self),
-                       BuildingPlacer.get_build_location_near(
-                           self.base_location_manager
-                               .get_player_starting_base_location(PLAYER_SELF),
-                           UNIT_TYPEID.TERRAN_SUPPLYDEPOT))
+        home_base = (self.base_location_manager.
+                     get_player_starting_base_location(PLAYER_SELF).position)
+        home_base_2di = Point2DI(int(home_base.x), int(home_base.y))
+        supply_depot = UnitType(UNIT_TYPEID.TERRAN_SUPPLYDEPOT, self)
+        location = self.building_placer.get_build_location_near(home_base_2di,
+                                                                supply_depot)
+        worker = random.choice(self.get_my_workers())
+
+        if (self.current_supply / self.max_supply) >= 0.8\
+            and self.max_supply < 200\
+            and self.minerals >= 100\
+            and not self.currently_building_supply_depot():
+            Unit.build(worker, supply_depot, location)
+
 
 
 if __name__ == "__main__":
