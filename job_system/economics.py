@@ -21,8 +21,9 @@ class Gatherer(Worker):
 
     name: str = 'Gatherer'
 
-    def on_assignment(self, bot: IDABot, unit: Unit):
+    def __init__(self, bot: IDABot, unit: Unit):
         self.click_closest_mineral(bot, unit)
+        super().__init__(bot, unit)
 
     def on_step(self, bot: IDABot, unit: Unit):
         if unit.is_idle:
@@ -35,16 +36,25 @@ class Gatherer(Worker):
 
 
 # ZW
-class Builder(Job):
-    """Worker who construct buildings."""
+class GethererGas(Worker):
+    """Worker who gathers resources."""
 
-    name: str = 'Builder'
+    name: str = 'Gatherer - Gas'
 
-    def on_assignment(self, unit: Unit):
-        """Called when unit is assigned to job."""
-        unit.build(self.build_this)
+    def __init__(self, bot: IDABot, unit: Unit):
+        self.click_closest_rifinery(bot, unit)
+        super().__init__(bot, unit)
 
+    def on_step(self, bot: IDABot, unit: Unit):
+        if unit.is_idle:
+            self.click_closest_mineral(bot, unit)
+        super().on_step(bot, unit)
 
+    def click_closest_mineral(self, bot: IDABot, unit: Unit):
+        mineral = find_closest_mineralfield(bot, unit.position)
+        unit.right_click(mineral)
 
-
+    @classmethod
+    def is_qualified(cls, bot: IDABot, unit: Unit):
+        if refiner
 

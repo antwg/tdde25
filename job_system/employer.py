@@ -1,6 +1,5 @@
-from typing import Type
+from typing import Type, List
 
-from job_system.economics import *
 from job_system.structures import *
 
 
@@ -21,17 +20,14 @@ class Employer:
         if before_job:
             Employer.fire(bot, unit)
 
+        print([(job.demand, job) for job in get_jobs_after_demand()])
+
         if not cls.is_banned(unit) and Job.is_proper(bot, unit):
             """Basically the assignment process so far."""
-            if Gatherer.is_qualified(bot, unit):
-                cls.add(bot, unit, Gatherer)
-                return True
-            elif CommandCenter.is_qualified(bot, unit):
-                cls.add(bot, unit, CommandCenter)
-                return True
-            elif Structure.is_qualified(bot, unit):
-                cls.add(bot, unit, Structure)
-                return True
+            for job in get_jobs_after_demand():
+                if job.is_qualified(bot, unit):
+                    cls.add(bot, unit, job)
+                    return True
 
         # Oof. Harsh life
         cls.ban_unit(unit)
@@ -74,6 +70,25 @@ class Employer:
         """Necessary load for Employer to work properly."""
         cls.ban = set()
         cls.jobs = list()
+
+
+# ZW
+def get_jobs_after_demand() -> List:
+    return sorted(get_all_jobs(), key=lambda job: job.demand, reverse=True)
+
+
+# ZW
+def get_all_jobs(from_job=Job) -> List:
+    found_jobs = []
+    if '-TEMPLATE-' not in from_job.name:
+        found_jobs.append(from_job)
+
+    sub_jobs = from_job.__subclasses__()
+    if sub_jobs:
+        for sub_job in sub_jobs:
+            found_jobs += get_all_jobs(sub_job)
+
+    return found_jobs
 
 
 # ZW

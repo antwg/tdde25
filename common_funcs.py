@@ -1,5 +1,6 @@
 from library import *
 from math import sqrt
+from typing import Union, List
 
 
 minerals_TYPEID = [UNIT_TYPEID.NEUTRAL_MINERALFIELD,
@@ -16,6 +17,10 @@ minerals_TYPEID = [UNIT_TYPEID.NEUTRAL_MINERALFIELD,
                    UNIT_TYPEID.NEUTRAL_PURIFIERMINERALFIELD750,
                    UNIT_TYPEID.NEUTRAL_PURIFIERRICHMINERALFIELD750]
 
+refineries_TYPEID = [UNIT_TYPEID.TERRAN_REFINERY,
+                     UNIT_TYPEID.TERRAN_REFINERYRICH,
+                     UNIT_TYPEID.AUTOMATEDREFINERY,
+                     UNIT_TYPEID.INFESTEDREFINERY]
 
 
 # Get distance from this point to the next
@@ -31,6 +36,14 @@ def find_my_units_with_type(searched_type: UNIT_TYPEID, bot: IDABot):
     found_units = []
     for unit in bot.get_my_units():
         if unit.unit_typr.unit_typeid == searched_type:
+            found_units.append(unit)
+    return found_units
+
+
+def find_my_units_with_types(searched_types: List[UNIT_TYPEID], bot: IDABot):
+    found_units = []
+    for unit in bot.get_my_units():
+        if unit.unit_typr.unit_typeid in searched_types:
             found_units.append(unit)
     return found_units
 
@@ -64,4 +77,13 @@ def find_closest_mineralfield(bot: IDABot, point: Point2D):
         return closest_mineral
     else:
         return None
+
+
+def find_base_location_on_point(bot: IDABot, point0: Union[Point2D, Point2DI]):
+    point = point0 if isinstance(point0, Point2D) else point0.to_f
+
+    for base_location in bot.base_location_manager.base_locations:
+        if base_location.contains_position(point):
+            return base_location
+    return None
 

@@ -8,6 +8,7 @@ class Job:
     """Template for all different job_system."""
 
     name: str = '-TEMPLATE-'
+    demand: int = 10
 
     @classmethod
     def is_proper(cls, bot: IDABot, unit: Unit):
@@ -41,3 +42,6 @@ class Job:
         """Called when unit is removed from job."""
         pass
 
+    @classmethod
+    def get_demand(cls):
+        return cls.demand
