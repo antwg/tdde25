@@ -149,11 +149,22 @@ class MyAgent(ScaiBackbone):
                 and not self.currently_building(UNIT_TYPEID.TERRAN_BARRACKS):
             Unit.build(worker, barrack, location)
 
-
     def max_number_of_barracks(self):
         return len(self.base_location_manager.get_occupied_base_locations
                    (PLAYER_SELF)) * 2
 
+    def get_base_locations_with_grounded_cc(self) -> List[BaseLocation]:
+        """Get all base locations that have an owned command center."""
+        base_locations = self.base_location_manager.base_locations
+        command_centers = self \
+            .get_my_types_units(grounded_command_centers_TYPEIDS)
+        found = []
+        for base_location in base_locations:
+            if base_location.is_occupied_by_player(PLAYER_SELF):
+                if any([base_location.contains_position(cc.position)
+                        for cc in command_centers]):
+                    found.append(base_location)
+        return found
 
 
 if __name__ == "__main__":
