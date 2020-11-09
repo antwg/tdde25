@@ -1,2 +1,2 @@
 
-game_dir = r"C:\Users\anton\StarCraft II\Versions\Base81009\SC2_x64.exe"
+game_dir = r"C:\Program Files (x86)\StarCraft II\Versions\Base81433\SC2_x64.exe"
