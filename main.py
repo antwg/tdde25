@@ -45,11 +45,13 @@ class MyAgent(ScaiBackbone):
                 command_center.train(scv_type)
 
     def mine_minerals(self):
+        """Makes workers mine at starting base"""
         for unit in self.get_my_workers():
             if unit.is_idle:
                 unit.right_click(random.choice(self.get_start_base_minerals()))
 
     def get_my_workers(self):
+        """Makes a list of workers"""
         workers = []
         for unit in self.get_my_units():
             if unit.unit_type.is_worker:
@@ -67,12 +69,11 @@ class MyAgent(ScaiBackbone):
         return units
 
     def get_start_base_minerals(self):
+        """Returns list of minerals (units) within starting base"""
+        # Base location can be changed later on, making it work with expansions
         start_location = self.base_location_manager \
             .get_player_starting_base_location(PLAYER_SELF)
         return start_location.minerals
-
-    #  def get_my_workers(self):
-    #       return (lambda unit: unit.unit_type.is_worker, self.get_all_units())
 
     def currently_building_supply_depot(self):
         """"Checks if a supply depot is being built"""
@@ -88,20 +89,19 @@ class MyAgent(ScaiBackbone):
 
     def build_supply_depot(self): #AW
         """Builds a supply depot when necessary."""
-        home_base = (self.base_location_manager.
-                     get_player_starting_base_location(PLAYER_SELF).position)
+        home_base = self \
+            .base_location_manager.get_player_starting_base_location(PLAYER_SELF).position
         home_base_2di = Point2DI(int(home_base.x), int(home_base.y))
         supply_depot = UnitType(UNIT_TYPEID.TERRAN_SUPPLYDEPOT, self)
-        location = self.building_placer.get_build_location_near(home_base_2di,
-                                                                supply_depot)
+        location = self.building_placer.get_build_location_near(home_base_2di, supply_depot)
+
         worker = random.choice(self.get_my_workers())
 
-        if (self.current_supply / self.max_supply) >= 0.8\
-                and self.max_supply < 200\
-                and self.minerals >= 100\
+        if (self.current_supply / self.max_supply) >= 0.8 \
+                and self.max_supply < 200 \
+                and self.minerals >= 200 \
                 and not self.currently_building_supply_depot():
             Unit.build(worker, supply_depot, location)
-
 
 
 if __name__ == "__main__":
