@@ -3,9 +3,10 @@ import random
 from typing import List
 
 from scai_backbone import *
-
 from debug import *
 from extra import *
+from armies import *
+from funcs import *
 
 
 # ZW
@@ -15,6 +16,7 @@ class MyAgent(ScaiBackbone):
     def on_game_start(self):
         """Called on start up, passed from IDABot.on_game_start()."""
         ScaiBackbone.on_game_start(self)
+        create_troop(Point2D(35, 123))
 
     def on_step(self):
         """Called each cycle, passed from IDABot.on_step()."""
@@ -24,6 +26,7 @@ class MyAgent(ScaiBackbone):
         self.build_supply_depot()
         self.mine_minerals()
         self.train_scv()
+        self.train_marine()
 
     def mine_minerals(self):
         """Makes workers mine at starting base"""
@@ -84,27 +87,22 @@ class MyAgent(ScaiBackbone):
         if self.can_afford(scv_type):
             for bl in base_locations:
                 count_gatherers = 0
+                count_caretakers = 0
                 for scv in scvs:
                     if bl.contains_position(scv.position):
+                        count_caretakers += 1
                         if scv.has_target:
                             if scv.target.unit_type.unit_typeid \
                                     in minerals_TYPEIDS:
                                 count_gatherers += 1
 
-                if count_gatherers < 16:
+                if count_gatherers < 10 or count_caretakers < 16:
                     ccs = filter(lambda cc: bl.contains_position(cc.position),
                                  self.get_my_types_units(
                                      grounded_command_centers_TYPEIDS))
-                    closest_cc = None
-                    closest_dist = 0
-                    for cc in ccs:
-                        if not closest_cc \
-                                or closest_dist < cc.position.dist(bl.position):
-                            closest_cc = cc
-                            closest_dist = cc.position.dist(bl.position)
-
-                    if closest_cc.is_idle:
-                        closest_cc.train(scv_type)
+                    cc = get_closest_unit(ccs, bl.position)
+                    if cc.is_idle:
+                        cc.train(scv_type)
 
     def currently_building(self, unit_type):
         """"Checks if a unit is being built"""
@@ -117,6 +115,30 @@ class MyAgent(ScaiBackbone):
             return True
         else:
             return False
+
+    # ZW
+    def train_marine(self):
+        """Train marines if more are required."""
+
+        marines = filter(lambda unit: not any([trp.has_unit(unit)
+                                               for trp in troops]),
+                         self.get_my_type_units(UNIT_TYPEID.TERRAN_MARINE))
+        if marines:
+            for marine in marines:
+                troop = marine_seeks_troop(marine.position)
+                if troop:
+                    troop += marine
+
+        for troop in troops:
+            marine = UnitType(UNIT_TYPEID.TERRAN_MARINE, self)
+            if troop.wants_marines and self.can_afford(marine):
+                barracks = filter(lambda unit: unit.is_idle,
+                                  self.get_my_type_units(UNIT_TYPEID
+                                                         .TERRAN_BARRACKS))
+                barrack = get_closest_unit(barracks, troop.target)
+                if barrack:
+                    barrack.train(marine)
+                    barrack.move(troop.target)
 
     def build_supply_depot(self):  # AW
         """Builds a supply depot when necessary."""
