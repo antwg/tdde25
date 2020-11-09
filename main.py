@@ -18,13 +18,12 @@ class MyAgent(ScaiBackbone):
     def on_step(self):
         """Called each cycle, passed from IDABot.on_step()."""
         ScaiBackbone.on_step(self)
-
         # print_debug(self)
-
+        self.build_barrack()
         self.build_supply_depot()
         self.mine_minerals()
         self.train_scv()
-
+#TODO Hämta våra baser
     # ZW
     def train_scv(self):
         """Builds a SCV if possible and necessary, not regarding to where
@@ -74,11 +73,11 @@ class MyAgent(ScaiBackbone):
     #  def get_my_workers(self):
     #       return (lambda unit: unit.unit_type.is_worker, self.get_all_units())
 
-    def currently_building_supply_depot(self):
-        """"Checks if a supply depot is being built"""
+    def currently_building(self, unit_type):
+        """"Checks if a unit is being built"""
         value = 0
         for unit in self.get_my_units():
-            if unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_SUPPLYDEPOT\
+            if unit.unit_type.unit_typeid == unit_type\
                     and not unit.is_completed:
                 value = value + 1
         if value >= 1:
@@ -99,8 +98,28 @@ class MyAgent(ScaiBackbone):
         if (self.current_supply / self.max_supply) >= 0.8\
                 and self.max_supply < 200\
                 and self.minerals >= 100\
-                and not self.currently_building_supply_depot():
+                and not self.currently_building(UNIT_TYPEID.TERRAN_SUPPLYDEPOT):
             Unit.build(worker, supply_depot, location)
+
+    def build_barrack(self): #AW
+        home_base = (self.base_location_manager.
+                     get_player_starting_base_location(PLAYER_SELF).position)
+        home_base_2di = Point2DI(int(home_base.x), int(home_base.y))
+        barrack = UnitType(UNIT_TYPEID.TERRAN_BARRACKS, self)
+        location = self.building_placer.get_build_location_near(home_base_2di,
+                                                                barrack)
+        worker = random.choice(self.get_my_workers())
+
+        if self.minerals >= barrack.mineral_price\
+                and len(self.get_my_type_units(UNIT_TYPEID.TERRAN_BARRACKS)) <\
+                self.max_number_of_barracks()\
+                and not self.currently_building(UNIT_TYPEID.TERRAN_BARRACKS):
+            Unit.build(worker, barrack, location)
+
+
+    def max_number_of_barracks(self):
+        return len(self.base_location_manager.get_occupied_base_locations
+                   (PLAYER_SELF)) * 2
 
 
 
