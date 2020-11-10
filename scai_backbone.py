@@ -60,7 +60,7 @@ class ScaiBackbone(IDABot):
         # participant_2 = create_participants(Race.Terran, bot2)
         participant_2 = create_computer(Race.Random, Difficulty.Easy)
 
-        coordinator.set_real_time(False)
+        coordinator.set_real_time(True)
         coordinator.set_participants([participant_1, participant_2])
         coordinator.launch_starcraft()
         path = os.path.join(os.getcwd(), "maps", "InterloperTest-adjusted.SC2Map")

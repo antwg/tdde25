@@ -21,12 +21,19 @@ class MyAgent(ScaiBackbone):
     def on_step(self):
         """Called each cycle, passed from IDABot.on_step()."""
         ScaiBackbone.on_step(self)
-        # print_debug(self)
+        #print_debug(self)
+        #self.get_coords()
         self.build_barrack()
         self.build_supply_depot()
         self.mine_minerals()
         self.train_scv()
+<<<<<<< Updated upstream
         self.train_marine()
+=======
+        self.defence()
+
+
+>>>>>>> Stashed changes
 
     def mine_minerals(self):
         """Makes workers mine at starting base"""
@@ -104,7 +111,7 @@ class MyAgent(ScaiBackbone):
                     if cc.is_idle:
                         cc.train(scv_type)
 
-    def currently_building(self, unit_type):
+    def currently_building(self, unit_type): #AW
         """"Checks if a unit is being built"""
         value = 0
         for unit in self.get_my_units():
@@ -157,6 +164,7 @@ class MyAgent(ScaiBackbone):
             Unit.build(worker, supply_depot, location)
 
     def build_barrack(self): #AW
+        """Builds a barrack when necessary."""
         home_base = (self.base_location_manager.
                      get_player_starting_base_location(PLAYER_SELF).position)
         home_base_2di = Point2DI(int(home_base.x), int(home_base.y))
@@ -171,7 +179,8 @@ class MyAgent(ScaiBackbone):
                 and not self.currently_building(UNIT_TYPEID.TERRAN_BARRACKS):
             Unit.build(worker, barrack, location)
 
-    def max_number_of_barracks(self):
+    def max_number_of_barracks(self): #AW
+        """Determines the suitable number of barracks"""
         return len(self.base_location_manager.get_occupied_base_locations
                    (PLAYER_SELF)) * 2
 
@@ -188,6 +197,25 @@ class MyAgent(ScaiBackbone):
                     found.append(base_location)
         return found
 
+    def squared_distance(self, unit_1, unit_2):
+        p1 = unit_1.position
+        p2 = unit_2.position
+        return (p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2
+
+    def defence(self):
+        home_base = (self.base_location_manager.
+                     get_player_starting_base_location(PLAYER_SELF).position)
+
+        if len(self.get_my_type_units(UNIT_TYPEID.TERRAN_MARINE)) >= 8:
+            if (self.squared_distance(home_base, Point2D(119, 47))
+                    < self.squared_distance(home_base, Point2D(33, 120))):
+                print(1)
+            else:
+                print(2)
+
+
+#point 1:119, 47
+#point 2: 33, 120
 
 if __name__ == "__main__":
     MyAgent.bootstrap()
