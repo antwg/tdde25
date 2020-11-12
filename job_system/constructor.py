@@ -41,7 +41,7 @@ class Builder(Worker):
         super().__init__(bot, unit)
 
     @classmethod
-    def get_demand(cls):
+    def get_demand(cls, bot):
         if construct_queue:
             return 20 + 2*len(construct_queue)
         else:

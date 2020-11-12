@@ -22,6 +22,13 @@ refineries_TYPEID = [UNIT_TYPEID.TERRAN_REFINERY,
                      UNIT_TYPEID.AUTOMATEDREFINERY,
                      UNIT_TYPEID.INFESTEDREFINERY]
 
+grounded_command_center_TYPEID = [UNIT_TYPEID.TERRAN_COMMANDCENTER,
+                                  UNIT_TYPEID.TERRAN_ORBITALCOMMAND,
+                                  UNIT_TYPEID.TERRAN_PLANETARYFORTRESS]
+
+supply_TYPEID = [UNIT_TYPEID.TERRAN_SUPPLYDEPOT,
+                  UNIT_TYPEID.TERRAN_SUPPLYDEPOTLOWERED]
+
 
 # Get distance from this point to the next
 Point2D.distance = lambda self, other: sqrt((self.x - other.x)**2
@@ -30,6 +37,13 @@ Point2D.distance = lambda self, other: sqrt((self.x - other.x)**2
 Point2D.to_i = lambda self: Point2DI(int(self.x), int(self.y))
 # Translate a Integer point to regular
 Point2DI.to_f = lambda self: Point2D(self.x, self.y)
+
+
+def find_unit_with_id(bot: IDABot, unit_id: int):
+    for unit in bot.get_my_units():
+        if unit.id == unit_id:
+            return unit
+    return None
 
 
 def find_my_units_with_type(searched_type: UNIT_TYPEID, bot: IDABot):
@@ -43,7 +57,7 @@ def find_my_units_with_type(searched_type: UNIT_TYPEID, bot: IDABot):
 def find_my_units_with_types(searched_types: List[UNIT_TYPEID], bot: IDABot):
     found_units = []
     for unit in bot.get_my_units():
-        if unit.unit_typr.unit_typeid in searched_types:
+        if unit.unit_type.unit_typeid in searched_types:
             found_units.append(unit)
     return found_units
 
@@ -64,19 +78,18 @@ def find_all_mineralfields(bot: IDABot):
     return found_units
 
 
-def find_closest_mineralfield(bot: IDABot, point: Point2D):
-    minerals = find_all_mineralfields(bot)
+def find_closest_unit_to(units: List[Unit], point: Point2D):
+    closest = 0
+    found = None
+    for unit in units:
+        if not found or closest > unit.position.distance(point):
+            closest = unit.position.distance(point)
+            found = unit
+    return found
 
-    if minerals:
-        closest_mineral = minerals[0]
-        closest_distance = point.distance(minerals[0].position)
-        for mineral in minerals[1:]:
-            if point.distance(mineral.position) < closest_distance:
-                closest_distance = point.distance(mineral.position)
-                closest_mineral = mineral
-        return closest_mineral
-    else:
-        return None
+
+def find_closest_mineralfield(bot: IDABot, point: Point2D):
+    return find_closest_unit_to(find_all_mineralfields(bot), point)
 
 
 def find_base_location_on_point(bot: IDABot, point0: Union[Point2D, Point2DI]):
@@ -87,3 +100,18 @@ def find_base_location_on_point(bot: IDABot, point0: Union[Point2D, Point2DI]):
             return base_location
     return None
 
+
+def find_units_base_location(bot: IDABot, unit: Unit):
+    return find_base_location_on_point(bot, unit.position)
+
+
+def click_closest_mineral(bot: IDABot, unit: Unit):
+    mineral = find_closest_mineralfield(bot, unit.position)
+    unit.right_click(mineral)
+
+
+def get_provided_supply(bot: IDABot):
+    supply = 0
+    for unit in find_my_units_with_types(supply_TYPEID, bot):
+        supply += unit.supply_provided
+    return supply
