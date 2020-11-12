@@ -29,6 +29,8 @@ class MyAgent(ScaiBackbone):
         self.train_scv()
         self.train_marine()
         self.defence()
+        self.expansion()
+
 
     def mine_minerals(self):
         """Makes workers mine at starting base"""
@@ -217,10 +219,12 @@ class MyAgent(ScaiBackbone):
                     found.append(base_location)
         return found
 
-    def squared_distance(self, p1, p2):
+    def squared_distance(self, p1, p2): #AW
+        """Calculates the squared distance between 2 points"""
         return (p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2
 
-    def nearest_choke_point(self):
+    def nearest_choke_point(self): #AW
+        """Returns the choke point closest to command center"""
         home_base = (self.base_location_manager.
                      get_player_starting_base_location(PLAYER_SELF).position)
         home_base_tuple = (int(home_base.x), int(home_base.y))
@@ -233,13 +237,51 @@ class MyAgent(ScaiBackbone):
         else:
             return Point2D(33, 120)
 
-    def defence(self):
+    def defence(self): #AW
+        """Moves troops to a nearby choke point"""
         target_coords = (troops[0].target.x, troops[0].target.y)
         choke_coords = (self.nearest_choke_point().x,
                         self.nearest_choke_point().y)
         if target_coords != choke_coords:
             troops[0].move_units(self, self.nearest_choke_point())
 
+    def expansion(self): #AW
+        """Builds new command center when needed"""
+        marines = UNIT_TYPEID.TERRAN_MARINE
+        command_center = UNIT_TYPEID.TERRAN_COMMANDCENTER
+        command_center_type = UnitType(UNIT_TYPEID.TERRAN_COMMANDCENTER, self)
+        worker = random.choice(self.get_my_workers())
+        location = self.base_location_manager.get_next_expansion(PLAYER_SELF).\
+            depot_position
+
+        if len(self.get_my_type_units(marines)) >= 8\
+                and self.can_afford(command_center_type)\
+                and not self.currently_building(command_center):
+            Unit.build(worker, command_center_type, location)
+
+    def get_mineral_fields(self, base_location: BaseLocation) -> List[Unit]: #Kurssidan
+        """ Given a base_location, this method will find and return a list of
+        all mineral fields (Unit) for that base """
+        mineral_fields = []
+        for mineral_field in base_location.mineral_fields:
+            for unit in self.get_all_units():
+                if unit.unit_type.is_mineral \
+                        and mineral_field.tile_position.x == unit.tile_position.x \
+                        and mineral_field.tile_position.y == unit.tile_position.y:
+                    mineral_fields.append(unit)
+        return mineral_fields
+
+    def get_geysers(self, base_location: BaseLocation) -> List[Unit]: #Kurssidan
+        """ Given a base_location, this method will find and return a list of
+            all geysers for that base """
+        geysers = []
+        for geyser in base_location.geysers:
+            for unit in self.get_all_units():
+                if unit.unit_type.is_geyser \
+                        and geyser.tile_position.x == unit.tile_position.x \
+                        and geyser.tile_position.y == unit.tile_position.y:
+                    geysers.append(unit)
+        return geysers
 
 if __name__ == "__main__":
     MyAgent.bootstrap()
