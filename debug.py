@@ -80,8 +80,6 @@ def print_unit_overview(self):
 
         speace *= 2
 
-<<<<<<< Updated upstream
-
     # DP
 def unit_assignment(self):
     """Creates a dictionary with a unit and its current assignment"""
@@ -98,7 +96,7 @@ def unit_assignment(self):
         elif my_unit.unit_type.is_geyser:
             assignment[my_unit] = "refinery"
     return assignment
-=======
+
     pass
 
 
@@ -107,4 +105,4 @@ def get_coords(self):
     for unit in self.get_my_workers():
         text = str(unit.position)
         self.map_tools.draw_text(unit.position, text, Color(255, 255, 255))
->>>>>>> Stashed changes
+

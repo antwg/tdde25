@@ -27,13 +27,10 @@ class MyAgent(ScaiBackbone):
         self.build_supply_depot()
         self.mine_minerals()
         self.train_scv()
-<<<<<<< Updated upstream
         self.train_marine()
-=======
         self.defence()
 
 
->>>>>>> Stashed changes
 
     def mine_minerals(self):
         """Makes workers mine at starting base"""
@@ -52,7 +49,7 @@ class MyAgent(ScaiBackbone):
 
     # ZW
     def can_afford(self, unit_type: UnitType) -> bool:
-        """Returns whetever a unit is affordable. """
+        """Returns whenever a unit is affordable. """
         return self.minerals >= unit_type.mineral_price \
             and self.gas >= unit_type.gas_price \
             and self.max_supply - self.current_supply \
@@ -86,7 +83,6 @@ class MyAgent(ScaiBackbone):
     # ZW
     def train_scv(self):
         """Builds a SCV if possible on a base if needed."""
-
         scv_type = UnitType(UNIT_TYPEID.TERRAN_SCV, self)
         scvs = self.get_my_workers()
         base_locations = self.get_base_locations_with_grounded_cc()
@@ -171,7 +167,7 @@ class MyAgent(ScaiBackbone):
         barrack = UnitType(UNIT_TYPEID.TERRAN_BARRACKS, self)
         location = self.building_placer.get_build_location_near(home_base_2di,
                                                                 barrack)
-        worker = random.choice(self.get_my_workers())
+        worker = self.get_my_workers()[0]
 
         if self.minerals >= barrack.mineral_price\
                 and len(self.get_my_type_units(UNIT_TYPEID.TERRAN_BARRACKS)) <\
@@ -197,25 +193,29 @@ class MyAgent(ScaiBackbone):
                     found.append(base_location)
         return found
 
-    def squared_distance(self, unit_1, unit_2):
-        p1 = unit_1.position
-        p2 = unit_2.position
-        return (p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2
+    def squared_distance(self, p1, p2):
+        return (p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2
 
-    def defence(self):
+    def nearest_choke_point(self):
         home_base = (self.base_location_manager.
                      get_player_starting_base_location(PLAYER_SELF).position)
+        home_base_tuple = (int(home_base.x), int(home_base.y))
+        point1 = (119, 47)
+        point2 = (33, 120)
 
-        if len(self.get_my_type_units(UNIT_TYPEID.TERRAN_MARINE)) >= 8:
-            if (self.squared_distance(home_base, Point2D(119, 47))
-                    < self.squared_distance(home_base, Point2D(33, 120))):
-                print(1)
-            else:
-                print(2)
+        if (self.squared_distance(home_base_tuple, point1)
+                < self.squared_distance(home_base_tuple, point2)):
+            return Point2D(119, 47)
+        else:
+            return Point2D(33, 120)
 
+    def defence(self):
+        target_coords = (troops[0].target.x, troops[0].target.y)
+        choke_coords = (self.nearest_choke_point().x,
+                        self.nearest_choke_point().y)
+        if target_coords != choke_coords:
+            troops[0].move_units(self, self.nearest_choke_point())
 
-#point 1:119, 47
-#point 2: 33, 120
 
 if __name__ == "__main__":
     MyAgent.bootstrap()
