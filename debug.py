@@ -2,15 +2,15 @@ import time
 from scai_backbone import *
 
 
-def print_debug(self):
+def print_debug(self, job_dict):
     # Skriver ut (< UnitType >  id: < id >  i: < enumereringsindex >)
     # för alla egna eneheter och resurser
 
     # print_debug_my_units(self)
     # print_debug_minerals_near_base(self)
     # print_debug_geysers_near_base(self)
-    print_unit_info(self)
-    print_unit_overview(self)
+    print_unit_info(self, job_dict)
+    print_unit_overview(self, job_dict)
 
 
     # DP
@@ -50,50 +50,54 @@ def print_debug_all(self, unit, i):
 
 
     # DP
-def print_unit_info(self):
+def print_unit_info(self, job_dict):
     """prints out units assignment"""
-    assignment_list = unit_assignment(self)
+    assignment_list = unit_assignment(self, job_dict)
     for unit in assignment_list:
         self.map_tools.draw_text(unit.position, assignment_list[unit], Color(255, 255, 255))
 
 
     # DP
-def print_unit_overview(self):
+def print_unit_overview(self, job_dict):
     """Prints out the assignment and number of workers in the top left corner"""
-    assignment_list = unit_assignment(self)
+    assignment_amount_list = assignment_amount(self, job_dict)
     self.map_tools.draw_text_screen(0.01, 0.01, "Units Assignments:", Color(255, 255, 255))
     self.map_tools.draw_text_screen(0.01, 0.03, "------------------", Color(255, 255, 255))
 
-    speace = 0.025
-    assignments = {}
+    space = 0.025
 
-    for unit, assignment in assignment_list.items():
-        if assignment_list[unit] in assignments:
-            assignments[assignment] += 1
-        else:
-            assignments[assignment] = 1
-
-    for assignment, amount in assignments.items():
+    for assignment, amount in assignment_amount_list.items():
         text = str(assignment) + ":"
-        self.map_tools.draw_text_screen(0.01, 0.03 + speace, text, Color(255, 255, 255))
-        self.map_tools.draw_text_screen(0.06, 0.03 + speace, str(amount), Color(255, 255, 255))
+        self.map_tools.draw_text_screen(0.01, 0.03 + space, text, Color(255, 255, 255))
+        self.map_tools.draw_text_screen(0.06, 0.03 + space, str(amount), Color(255, 255, 255))
 
-        speace *= 2
+        space *= 2
 
 
     # DP
-def unit_assignment(self):
-    """Creates a dictionary with a unit and its current assignment"""
-    my_unit_list = self.get_my_units()
+def unit_assignment(self, job_dict):
+    """Creates dictionary of unit and assignment"""
     assignment = {}
-    for my_unit in my_unit_list:
-        if my_unit.has_target:
-            if my_unit.target.unit_type.is_mineral or my_unit.is_carrying_minerals:
-                assignment[my_unit] = "mineral"
-            elif my_unit.target.unit_type.is_refinery or my_unit.is_carrying_gas:
-                assignment[my_unit] = "gas"
-        elif my_unit.is_constructing(UnitType(UNIT_TYPEID.TERRAN_SUPPLYDEPOT, self)):
-            assignment[my_unit] = "supply"
-        elif my_unit.unit_type.is_geyser:
-            assignment[my_unit] = "refinery"
+    #kollar vad för typ av target unit har å skapar en dict baserat på det
+    for unit in job_dict:
+        if unit.unit_type.is_worker:
+            if job_dict[unit].unit_type.is_mineral:
+                assignment[unit] = "mineral"
+            elif job_dict[unit].unit_type.is_refinery:
+                assignment[unit] = "gas"
+
     return assignment
+
+
+def assignment_amount(self, job_dict):
+    """Makes a dictionary of assignment and amount of personnel"""
+    unit_assignment_list = unit_assignment(self, job_dict)
+    assignment_amount_list = {}
+
+    for unit, assignment in unit_assignment_list.items():
+        if unit_assignment_list[unit] in assignment_amount_list:
+            assignment_amount_list[assignment] += 1
+        else:
+            assignment_amount_list[assignment] = 1
+
+    return assignment_amount_list
