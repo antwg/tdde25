@@ -101,3 +101,10 @@ def assignment_amount(self, job_dict):
             assignment_amount_list[assignment] = 1
 
     return assignment_amount_list
+
+
+def get_coords(self):
+    """Prints position of all workers"""
+    for unit in self.get_my_workers():
+        text = str(unit.position)
+        self.map_tools.draw_text(unit.position, text, Color(255, 255, 255))
