@@ -30,8 +30,6 @@ class MyAgent(ScaiBackbone):
         self.train_marine()
         self.defence()
 
-
-
     def mine_minerals(self):
         """Makes workers mine at starting base"""
         for unit in self.get_my_workers():
@@ -44,7 +42,6 @@ class MyAgent(ScaiBackbone):
         for unit in self.get_my_units():
             if unit.unit_type.is_worker:
                 workers.append(unit)
-
         return workers
 
     # ZW
@@ -84,25 +81,44 @@ class MyAgent(ScaiBackbone):
     def train_scv(self):
         """Builds a SCV if possible on a base if needed."""
         scv_type = UnitType(UNIT_TYPEID.TERRAN_SCV, self)
-        scvs = self.get_my_workers()
         base_locations = self.get_base_locations_with_grounded_cc()
 
         if self.can_afford(scv_type):
             for bl in base_locations:
+                scvs = self.get_my_workers()
+                ccs = list(filter(lambda cc: bl.contains_position(cc.position),
+                             self.get_my_types_units(
+                                 grounded_command_centers_TYPEIDS)))
+
                 count_gatherers = 0
                 count_caretakers = 0
+                count_promised = 0
+
+                # Count all scvs in base_location and note if their gathering resources
                 for scv in scvs:
                     if bl.contains_position(scv.position):
+                        # Scv in base location
                         count_caretakers += 1
                         if scv.has_target:
                             if scv.target.unit_type.unit_typeid \
                                     in minerals_TYPEIDS:
+                                # Scv is gathering resources
                                 count_gatherers += 1
+                # Count all scvs that are being produced at location
+                for cc in ccs:
+                    if cc.is_constructing(scv_type):
+                        count_promised += 1
 
-                if count_gatherers < 10 or count_caretakers < 16:
-                    ccs = filter(lambda cc: bl.contains_position(cc.position),
-                                 self.get_my_types_units(
-                                     grounded_command_centers_TYPEIDS))
+                # Required least amount of caretakers
+                refineries = list(filter(lambda ref: ref.gas_left_in_refinery,
+                                  self.get_my_types_units(refineries_TYPEIDS)))
+                need_scvs = 3 * len(refineries) + 2 * len(bl.mineral_fields)
+
+                print(len(scvs), count_caretakers, count_gatherers, count_promised)
+
+                # If more scvs are required, try to produce more at closest cc
+                if ccs and count_gatherers + count_promised < need_scvs \
+                        or count_caretakers + count_promised < need_scvs:
                     cc = get_closest_unit(ccs, bl.position)
                     if cc.is_idle:
                         cc.train(scv_type)
@@ -123,25 +139,35 @@ class MyAgent(ScaiBackbone):
     def train_marine(self):
         """Train marines if more are required."""
 
-        marines = filter(lambda unit: not any([trp.has_unit(unit)
-                                               for trp in troops]),
-                         self.get_my_type_units(UNIT_TYPEID.TERRAN_MARINE))
+        # Try to fill troops with lone marines first
+        marines = list(filter(lambda unit: not any([trp.has_unit(unit)
+                                                    for trp in troops]),
+                              self.get_my_type_units(
+                                  UNIT_TYPEID.TERRAN_MARINE)))
         if marines:
             for marine in marines:
                 troop = marine_seeks_troop(marine.position)
                 if troop:
                     troop += marine
 
+        # Try to fill troops by producing marines
+        barracks = self.get_my_type_units(UNIT_TYPEID.TERRAN_BARRACKS)
+        marine = UnitType(UNIT_TYPEID.TERRAN_MARINE, self)
+        # To stop overflow of produce
+        already_producing = len(list(filter(lambda b: b.is_constructing(marine),
+                                            barracks)))
         for troop in troops:
-            marine = UnitType(UNIT_TYPEID.TERRAN_MARINE, self)
-            if troop.wants_marines and self.can_afford(marine):
-                barracks = filter(lambda unit: unit.is_idle,
-                                  self.get_my_type_units(UNIT_TYPEID
-                                                         .TERRAN_BARRACKS))
-                barrack = get_closest_unit(barracks, troop.target)
+            if troop.wants_marines - already_producing\
+                    and self.can_afford(marine):
+
+                barrack = get_closest_unit(
+                    list(filter(lambda b: b.is_idle, barracks)),
+                    troop.target)
+
                 if barrack:
                     barrack.train(marine)
-                    barrack.move(troop.target)
+
+            already_producing -= troop.wants_marines
 
     def build_supply_depot(self):  # AW
         """Builds a supply depot when necessary."""
