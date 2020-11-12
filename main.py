@@ -7,6 +7,8 @@ from scai_backbone import *
 from debug import *
 from extra import *
 
+job_dict = {}
+
 
 # ZW
 class MyAgent(ScaiBackbone):
@@ -19,17 +21,22 @@ class MyAgent(ScaiBackbone):
     def on_step(self):
         """Called each cycle, passed from IDABot.on_step()."""
         ScaiBackbone.on_step(self)
-        # print_debug(self)
+        print_debug(self, job_dict)
         self.build_barrack()
         self.build_supply_depot()
         self.mine_minerals()
         self.train_scv()
+        self.build_refinery()
+        self.gather_gas()
 
+    # DP
     def mine_minerals(self):
         """Makes workers mine at starting base"""
         for unit in self.get_my_workers():
-            if unit.is_idle:
-                unit.right_click(random.choice(self.get_start_base_minerals()))
+            if unit.is_idle and not self.is_worker_collecting_gas(unit):
+                mineral = random.choice(self.get_start_base_minerals())
+                unit.right_click(mineral)
+                self.add_to_job(unit, mineral)
 
     def get_my_workers(self):
         """Makes a list of workers"""
@@ -39,6 +46,98 @@ class MyAgent(ScaiBackbone):
                 workers.append(unit)
 
         return workers
+
+    def get_my_refineries(self):
+        """ Returns a list of all refineries (list of Unit) """
+        refineries = []
+        for unit in self.get_my_units():
+            if unit.unit_type.is_refinery:
+                refineries.append(unit)
+        return refineries
+
+    def is_worker_collecting_gas(self, worker):
+        """ Returns: True if a Unit `worker` is collecting gas, False otherwise """
+
+        def squared_distance(unit_1, unit_2):
+            p1 = unit_1.position
+            p2 = unit_2.position
+            return (p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2
+
+        for refinery in self.get_my_refineries():
+            if refinery.is_completed and squared_distance(worker, refinery) < 2 ** 2:
+                return True
+
+    def get_refinery(self, geyser: Unit) -> Optional[Unit]:
+        """
+        Returns: A refinery which is on top of unit `geyser` if any, None otherwise
+        """
+
+        def squared_distance(p1: Point2D, p2: Point2D) -> float:
+            return (p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2
+
+        for unit in self.get_my_units():
+            if unit.unit_type.is_refinery and squared_distance(unit.position, geyser.position) < 1:
+                return unit
+
+        return None
+
+    # DP
+    def build_refinery(self):
+        """Builds a refinery at base location, then calls for collection"""
+        refinery = UnitType(UNIT_TYPEID.TERRAN_REFINERY, self)
+        geysers_list = self.my_geysers()
+
+        for geyser in geysers_list:
+            worker = random.choice(self.get_my_workers())
+            if not self.currently_building(UNIT_TYPEID.TERRAN_REFINERY) and \
+                    self.get_refinery(geyser) is None and \
+                    self.can_afford(refinery):
+                worker.build_target(refinery, geyser)
+                self.add_to_job(worker, geyser)
+            elif self.get_refinery(geyser) is not None:
+                print(list(job_dict.values()))
+                self.add_to_job(list(job_dict.keys())[list(job_dict.values()).index(geyser)], self.get_refinery(geyser))
+
+    # DP
+    def gather_gas(self):
+        """Gathers gas from all available refineries"""
+        for refinery in self.get_my_refineries():
+            amount = 0
+            if refinery.is_completed:
+                for unit in job_dict:
+                    if job_dict[unit] == refinery:
+                        amount += 1
+                while amount < 3:
+                    worker = random.choice(self.get_my_workers())
+                    if job_dict[worker].unit_type.is_mineral:
+                        worker.right_click(refinery)
+                        self.add_to_job(worker, refinery)
+                        amount += 1
+
+    # DP
+    def add_to_job(self, unit, target):
+        job_dict[unit] = target
+
+    # DP
+    def get_my_mineral_miners(self):
+        mineral_miner = []
+        for unit in job_dict:
+            if job_dict[unit].unit_type.is_mineral:
+                mineral_miner.append(unit)
+        return mineral_miner
+
+    # DP
+    def my_geysers(self):
+        """Returns list of all geysers player has access to"""
+        base_locations = self.base_location_manager.get_occupied_base_locations(PLAYER_SELF)
+        geysers_base_list = []
+        gey_list = []
+        for base in base_locations:
+            geysers_base_list.append(base.geysers)
+            for geysers in geysers_base_list:
+                gey_list += geysers
+
+        return gey_list
 
     # ZW
     def can_afford(self, unit_type: UnitType) -> bool:
