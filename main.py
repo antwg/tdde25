@@ -114,8 +114,6 @@ class MyAgent(ScaiBackbone):
                                   self.get_my_types_units(refineries_TYPEIDS)))
                 need_scvs = 3 * len(refineries) + 2 * len(bl.mineral_fields)
 
-                print(len(scvs), count_caretakers, count_gatherers, count_promised)
-
                 # If more scvs are required, try to produce more at closest cc
                 if ccs and count_gatherers + count_promised < need_scvs \
                         or count_caretakers + count_promised < need_scvs:
