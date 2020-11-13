@@ -1,5 +1,6 @@
 import time
 import random
+from copy import deepcopy
 from typing import List
 
 from scai_backbone import *
@@ -7,8 +8,6 @@ from debug import *
 from extra import *
 from armies import *
 from funcs import *
-
-job_dict = {}
 
 
 # ZW
@@ -23,7 +22,7 @@ class MyAgent(ScaiBackbone):
     def on_step(self):
         """Called each cycle, passed from IDABot.on_step()."""
         ScaiBackbone.on_step(self)
-        print_debug(self, job_dict)
+        print_debug(self)
         #print_debug(self)
         #self.get_coords()
         self.build_barrack()
@@ -35,15 +34,21 @@ class MyAgent(ScaiBackbone):
         self.train_marine()
         self.defence()
         self.expansion()
+        global job_dict2
+        job_dict2 = deepcopy(job_dict)
 
     # DP
     def mine_minerals(self):
         """Makes workers mine at starting base"""
         for unit in self.get_my_workers():
-            if unit.is_idle and not self.is_worker_collecting_gas(unit):
-                mineral = random.choice(self.get_start_base_minerals())
-                unit.right_click(mineral)
-                self.add_to_job(unit, mineral)
+            if unit.is_idle:
+                for base_location in self.base_location_manager.get_occupied_base_locations(PLAYER_SELF):
+                    if base_location.contains_position(unit.position):
+                        mineral_list = self.get_mineral_fields(base_location)
+                        mineral = random.choice(mineral_list)
+                        self.add_to_job(unit, mineral)
+                        unit.right_click(mineral)
+
 
     def get_my_workers(self):
         """Makes a list of workers"""
@@ -100,9 +105,8 @@ class MyAgent(ScaiBackbone):
                     self.can_afford(refinery):
                 worker.build_target(refinery, geyser)
                 self.add_to_job(worker, geyser)
-            elif self.get_refinery(geyser) is not None:
-                print(list(job_dict.values()))
-                self.add_to_job(list(job_dict.keys())[list(job_dict.values()).index(geyser)], self.get_refinery(geyser))
+    #        elif self.get_refinery(geyser) is not None:
+    #            self.add_to_job(list(job_dict.keys())[list(job_dict.values()).index(geyser)], self.get_refinery(geyser))
 
     # DP
     def gather_gas(self):

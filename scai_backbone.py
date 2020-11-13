@@ -38,6 +38,9 @@ refineries_TYPEIDS = [
 Point2D.dist = lambda self, other: sqrt((self.x - other.x)**2
                                         + (self.y - other.y)**2)
 
+job_dict = {}
+job_dict2 = {}
+
 
 class ScaiBackbone(IDABot):
     def __init__(self):

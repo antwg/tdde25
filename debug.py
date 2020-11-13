@@ -2,17 +2,17 @@ import time
 from scai_backbone import *
 
 
-def print_debug(self, job_dict):
+def print_debug(self):
     # Skriver ut (< UnitType >  id: < id >  i: < enumereringsindex >)
     # för alla egna eneheter och resurser
 
     # print_debug_my_units(self)
     # print_debug_minerals_near_base(self)
     # print_debug_geysers_near_base(self)
-    print_unit_info(self, job_dict)
-    print_unit_overview(self, job_dict)
+    print_unit_info(self)
+    print_unit_overview(self)
 
-
+    # tihi
     # DP
 def print_debug_my_units(self):
     """Prints < UnitType >  id: < id >  i: < enumereringsindex > for the players units """
@@ -50,17 +50,17 @@ def print_debug_all(self, unit, i):
 
 
     # DP
-def print_unit_info(self, job_dict):
+def print_unit_info(self):
     """prints out units assignment"""
-    assignment_list = unit_assignment(self, job_dict)
+    assignment_list = unit_assignment(self)
     for unit in assignment_list:
         self.map_tools.draw_text(unit.position, assignment_list[unit], Color(255, 255, 255))
 
 
     # DP
-def print_unit_overview(self, job_dict):
+def print_unit_overview(self):
     """Prints out the assignment and number of workers in the top left corner"""
-    assignment_amount_list = assignment_amount(self, job_dict)
+    assignment_amount_list = assignment_amount(self)
     self.map_tools.draw_text_screen(0.01, 0.01, "Units Assignments:", Color(255, 255, 255))
     self.map_tools.draw_text_screen(0.01, 0.03, "------------------", Color(255, 255, 255))
 
@@ -75,11 +75,13 @@ def print_unit_overview(self, job_dict):
 
 
     # DP
-def unit_assignment(self, job_dict):
+def unit_assignment(self):
     """Creates dictionary of unit and assignment"""
     assignment = {}
     #kollar vad för typ av target unit har å skapar en dict baserat på det
     for unit in job_dict:
+        if unit in job_dict2 and job_dict[unit] == job_dict2[unit]:
+            print("unit changed jobs", unit, job_dict[unit], job_dict2[unit])
         if unit.unit_type.is_worker:
             if job_dict[unit].unit_type.is_mineral:
                 assignment[unit] = "mineral"
@@ -89,9 +91,9 @@ def unit_assignment(self, job_dict):
     return assignment
 
 
-def assignment_amount(self, job_dict):
+def assignment_amount(self):
     """Makes a dictionary of assignment and amount of personnel"""
-    unit_assignment_list = unit_assignment(self, job_dict)
+    unit_assignment_list = unit_assignment(self)
     assignment_amount_list = {}
 
     for unit, assignment in unit_assignment_list.items():
