@@ -30,20 +30,30 @@ class MyAgent(ScaiBackbone):
         self.build_supply_depot()
         self.mine_minerals()
         self.train_scv()
-        self.build_refinery()
+       # self.build_refinery()
         self.gather_gas()
         self.train_marine()
         self.defence()
         self.expansion()
+
+
 
     # DP
     def mine_minerals(self):
         """Makes workers mine at starting base"""
         for unit in self.get_my_workers():
             if unit.is_idle and not self.is_worker_collecting_gas(unit):
-                mineral = random.choice(self.get_start_base_minerals())
+                mineral = self.nearest_unit_list(self.get_all_minerals(),
+                                                 unit.position)
                 unit.right_click(mineral)
                 self.add_to_job(unit, mineral)
+
+    def get_all_minerals(self):
+        total = []
+        for base in self.get_base_locations_with_grounded_cc():
+            minerals = self.get_mineral_fields(base)
+            total += minerals
+        return total
 
     def get_my_workers(self):
         """Makes a list of workers"""
@@ -269,15 +279,42 @@ class MyAgent(ScaiBackbone):
 
             already_producing -= troop.wants_marines
 
+    def building_location_finder(self, unit_type):
+        """Finds a suitable location to build a unit of given type"""
+        home_base = self .base_location_manager.\
+            get_player_starting_base_location(PLAYER_SELF).position
+        home_base_2di = Point2DI(int(home_base.x), int(home_base.y))
+        location = self.building_placer.get_build_location_near(home_base_2di,
+                                                                unit_type, 5)
+        return location
+
+    def squared_distance_p2d(self, p1: Point2D, p2: Point2D) -> float:
+        """Gives the squared distance between two Point2D points"""
+        return (p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2
+
+    def nearest_worker(self, location):
+        """Finds the nearest worker given a location"""
+        worker_list = []
+        for worker in self.get_my_workers():
+            distance = self.squared_distance_p2d(location, worker.position)
+            worker_tuple = (distance, worker)
+            worker_list.append(worker_tuple)
+        return sorted(worker_list, key=lambda tup: tup[0])[0][1]
+
+    def nearest_unit_list(self, units, location):
+        """Finds the nearest unit in a list given a location"""
+        unit_list = []
+        for unit in units:
+            distance = self.squared_distance_p2d(location, unit.position)
+            unit_tuple = (distance, unit)
+            unit_list.append(unit_tuple)
+        return sorted(unit_list, key=lambda tup: tup[0])[0][1]
+
     def build_supply_depot(self):  # AW
         """Builds a supply depot when necessary."""
-        home_base = self \
-            .base_location_manager.get_player_starting_base_location(PLAYER_SELF).position
-        home_base_2di = Point2DI(int(home_base.x), int(home_base.y))
         supply_depot = UnitType(UNIT_TYPEID.TERRAN_SUPPLYDEPOT, self)
-        location = self.building_placer.get_build_location_near(home_base_2di, supply_depot)
-
-        worker = random.choice(self.get_my_workers())
+        location = self.building_location_finder(supply_depot)
+        worker = self.nearest_worker(location)
 
         if (self.current_supply / self.max_supply) >= 0.8\
                 and self.max_supply < 200\
@@ -287,13 +324,9 @@ class MyAgent(ScaiBackbone):
 
     def build_barrack(self): #AW
         """Builds a barrack when necessary."""
-        home_base = (self.base_location_manager.
-                     get_player_starting_base_location(PLAYER_SELF).position)
-        home_base_2di = Point2DI(int(home_base.x), int(home_base.y))
         barrack = UnitType(UNIT_TYPEID.TERRAN_BARRACKS, self)
-        location = self.building_placer.get_build_location_near(home_base_2di,
-                                                                barrack)
-        worker = self.get_my_workers()[0]
+        location = self.building_location_finder(barrack)
+        worker = self.nearest_worker(location)
 
         if self.minerals >= barrack.mineral_price\
                 and len(self.get_my_type_units(UNIT_TYPEID.TERRAN_BARRACKS)) <\
@@ -304,7 +337,7 @@ class MyAgent(ScaiBackbone):
     def max_number_of_barracks(self): #AW
         """Determines the suitable number of barracks"""
         return len(self.base_location_manager.get_occupied_base_locations
-                   (PLAYER_SELF)) * 2
+                   (PLAYER_SELF))
 
     def get_base_locations_with_grounded_cc(self) -> List[BaseLocation]:
         """Get all base locations that have an owned command center."""
@@ -354,7 +387,9 @@ class MyAgent(ScaiBackbone):
         location = self.base_location_manager.get_next_expansion(PLAYER_SELF).\
             depot_position
 
-        if len(self.get_my_type_units(marines)) >= 8\
+        if len(self.get_my_type_units(marines)) >= \
+                len(self.base_location_manager.get_occupied_base_locations
+                    (PLAYER_SELF)) * 8\
                 and self.can_afford(command_center_type)\
                 and not self.currently_building(command_center):
             Unit.build(worker, command_center_type, location)
