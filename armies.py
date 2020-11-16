@@ -12,9 +12,9 @@ class Troop:
     """A collection of military units."""
     target: Point2D  # Common target for all units in troop
 
-    marines: List[int]  # All marines in this troop
-    tanks: List[int]    # All siege tanks in this troop
-    others: List[int]   # All other units in this troop
+    marines: List[Unit]  # All marines in this troop
+    tanks: List[Unit]    # All siege tanks in this troop
+    others: List[Unit]   # All other units in this troop
 
     marines_capacity: int = 8  # How many marines this troop is asking for
     tanks_capacity: int = 2    # How many tanks this troop is asking for
@@ -43,21 +43,20 @@ class Troop:
         self.others = []
         self.under_attack = False
 
-    def get_units(self, bot: IDABot):
+    def get_units(self):
         """Get all units in troop."""
-        return list(filter(lambda unit: self.has_unit(unit),
-                           bot.get_my_units()))
+        return self.marines + self.tanks + self.others
 
-    def move_units(self, bot: IDABot, position: Point2D):
+    def move_units(self, position: Point2D):
         """Moves troop and all its units."""
         if self.target != position:
-            for trooper in self.get_units(bot):
+            for trooper in self.get_units():
                 trooper.move(position)
             self.target = position
 
     def has_unit(self, unit: Unit) -> bool:
         """Check if troop has unit."""
-        if unit.id in self.marines + self.tanks + self.others:
+        if unit in self.get_units():
             return True
         else:
             return False
@@ -69,13 +68,13 @@ class Troop:
 
         for unit in units:
             if unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_MARINE:
-                self.marines.append(unit.id)
+                self.marines.append(unit)
                 unit.move(self.target)
             elif unit.unit_type.unit_typeid in siege_tanks_TYPEIDS:
-                self.others.append(unit.id)
+                self.others.append(unit)
                 unit.move(self.target)
             else:
-                self.others.append(unit.id)
+                self.others.append(unit)
                 unit.move(self.target)
 
 

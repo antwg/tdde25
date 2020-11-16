@@ -78,7 +78,7 @@ def print_unit_overview(self, job_dict):
 def unit_assignment(self, job_dict):
     """Creates dictionary of unit and assignment"""
     assignment = {}
-    #kollar vad för typ av target unit har å skapar en dict baserat på det
+    # kollar vad för typ av target unit har å skapar en dict baserat på det
     for unit in job_dict:
         if unit.unit_type.is_worker:
             if job_dict[unit].unit_type.is_mineral:

@@ -24,19 +24,16 @@ class MyAgent(ScaiBackbone):
         """Called each cycle, passed from IDABot.on_step()."""
         ScaiBackbone.on_step(self)
         print_debug(self, job_dict)
-        #print_debug(self)
-        #self.get_coords()
+
         self.build_barrack()
         self.build_supply_depot()
         self.mine_minerals()
         self.train_scv()
-       # self.build_refinery()
+        # self.build_refinery()
         self.gather_gas()
         self.train_marine()
         self.defence()
         self.expansion()
-
-
 
     # DP
     def mine_minerals(self):
@@ -70,6 +67,20 @@ class MyAgent(ScaiBackbone):
             if unit.unit_type.is_refinery:
                 refineries.append(unit)
         return refineries
+
+    # ZW
+    def is_worker_collecting_minerals(self, worker: Unit):
+        """Returns: True if a unit is collecting Minerals, False otherwise."""
+
+        # TODO: Make it return the value correctly
+        # ARGH!!! AbilityID is the one to solve it but it's broken!
+        # An AbilityID can't be compared to another or ABILITY_ID. WHY?!
+        return worker.unit_type.is_worker \
+            and worker.has_target \
+            and worker.target.unit_type.unit_typeid in minerals_TYPEIDS \
+            or (worker.is_carrying_minerals
+                and worker.target.unit_type.unit_typeid
+                in grounded_command_centers_TYPEIDS)
 
     def is_worker_collecting_gas(self, worker):
         """ Returns: True if a Unit `worker` is collecting gas, False otherwise """
@@ -174,7 +185,7 @@ class MyAgent(ScaiBackbone):
 
     # ZW
     def get_my_types_units(self, searched_types: List[UnitTypeID]):
-        """Get all owned units with oe of the given unit types."""
+        """Get all owned units with one of the given unit types (list)."""
         units = []
         for unit in self.get_my_units():
             if unit.unit_type.unit_typeid in searched_types:
@@ -193,14 +204,20 @@ class MyAgent(ScaiBackbone):
     def train_scv(self):
         """Builds a SCV if possible on a base if needed."""
         scv_type = UnitType(UNIT_TYPEID.TERRAN_SCV, self)
-        base_locations = self.get_base_locations_with_grounded_cc()
 
         if self.can_afford(scv_type):
+            base_locations = self.base_location_manager.base_locations
+
             for bl in base_locations:
-                scvs = self.get_my_workers()
+
                 ccs = list(filter(lambda cc: bl.contains_position(cc.position),
                              self.get_my_types_units(
                                  grounded_command_centers_TYPEIDS)))
+
+                if not ccs:  # If no grounded command centers were found...
+                    continue  # ...continue on to next base location
+
+                scvs = self.get_my_workers()
 
                 count_gatherers = 0
                 count_caretakers = 0
@@ -212,8 +229,7 @@ class MyAgent(ScaiBackbone):
                         # Scv in base location
                         count_caretakers += 1
                         if scv.has_target:
-                            if scv.target.unit_type.unit_typeid \
-                                    in minerals_TYPEIDS:
+                            if self.is_worker_collecting_minerals(scv):
                                 # Scv is gathering resources
                                 count_gatherers += 1
                 # Count all scvs that are being produced at location
@@ -224,11 +240,11 @@ class MyAgent(ScaiBackbone):
                 # Required least amount of caretakers
                 refineries = list(filter(lambda ref: ref.gas_left_in_refinery,
                                   self.get_my_types_units(refineries_TYPEIDS)))
-                need_scvs = 3 * len(refineries) + 2 * len(bl.mineral_fields)
+                need_scvs = 3 * len(refineries) + 2 * len(bl.mineral_fields) + 2
 
                 # If more scvs are required, try to produce more at closest cc
-                if ccs and count_gatherers + count_promised < need_scvs \
-                        or count_caretakers + count_promised < need_scvs:
+                if ccs and count_caretakers + count_promised < need_scvs:
+                    #    or count_gatherers + count_promised < need_scvs:
                     cc = get_closest_unit(ccs, bl.position)
                     if cc.is_idle:
                         cc.train(scv_type)
@@ -249,7 +265,7 @@ class MyAgent(ScaiBackbone):
     def train_marine(self):
         """Train marines if more are required."""
 
-        # Try to fill troops with lone marines first
+        # ___Try to fill troops with lone marines first___
         marines = list(filter(lambda unit: not any([trp.has_unit(unit)
                                                     for trp in troops]),
                               self.get_my_type_units(
@@ -260,14 +276,14 @@ class MyAgent(ScaiBackbone):
                 if troop:
                     troop += marine
 
-        # Try to fill troops by producing marines
+        # ___Try to fill troops by producing marines___
         barracks = self.get_my_type_units(UNIT_TYPEID.TERRAN_BARRACKS)
         marine = UnitType(UNIT_TYPEID.TERRAN_MARINE, self)
         # To stop overflow of produce
-        already_producing = len(list(filter(lambda b: b.is_constructing(marine),
-                                            barracks)))
+        not_promised_marine = len(list(filter(
+            lambda b: b.is_constructing(marine), barracks)))
         for troop in troops:
-            if troop.wants_marines - already_producing\
+            if troop.wants_marines - not_promised_marine\
                     and self.can_afford(marine):
 
                 barrack = get_closest_unit(
@@ -277,7 +293,7 @@ class MyAgent(ScaiBackbone):
                 if barrack:
                     barrack.train(marine)
 
-            already_producing -= troop.wants_marines
+            not_promised_marine -= troop.wants_marines
 
     def building_location_finder(self, unit_type):
         """Finds a suitable location to build a unit of given type"""
@@ -322,7 +338,7 @@ class MyAgent(ScaiBackbone):
                 and not self.currently_building(UNIT_TYPEID.TERRAN_SUPPLYDEPOT):
             Unit.build(worker, supply_depot, location)
 
-    def build_barrack(self): #AW
+    def build_barrack(self):  # AW
         """Builds a barrack when necessary."""
         barrack = UnitType(UNIT_TYPEID.TERRAN_BARRACKS, self)
         location = self.building_location_finder(barrack)
@@ -334,29 +350,16 @@ class MyAgent(ScaiBackbone):
                 and not self.currently_building(UNIT_TYPEID.TERRAN_BARRACKS):
             Unit.build(worker, barrack, location)
 
-    def max_number_of_barracks(self): #AW
+    def max_number_of_barracks(self):  # AW
         """Determines the suitable number of barracks"""
         return len(self.base_location_manager.get_occupied_base_locations
                    (PLAYER_SELF))
 
-    def get_base_locations_with_grounded_cc(self) -> List[BaseLocation]:
-        """Get all base locations that have an owned command center."""
-        base_locations = self.base_location_manager.base_locations
-        command_centers = self \
-            .get_my_types_units(grounded_command_centers_TYPEIDS)
-        found = []
-        for base_location in base_locations:
-            if base_location.is_occupied_by_player(PLAYER_SELF):
-                if any([base_location.contains_position(cc.position)
-                        for cc in command_centers]):
-                    found.append(base_location)
-        return found
-
-    def squared_distance(self, p1, p2): #AW
+    def squared_distance(self, p1, p2):  # AW
         """Calculates the squared distance between 2 points"""
         return (p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2
 
-    def nearest_choke_point(self): #AW
+    def nearest_choke_point(self):  # AW
         """Returns the choke point closest to command center"""
         home_base = (self.base_location_manager.
                      get_player_starting_base_location(PLAYER_SELF).position)
@@ -370,15 +373,15 @@ class MyAgent(ScaiBackbone):
         else:
             return Point2D(33, 120)
 
-    def defence(self): #AW
+    def defence(self):  # AW
         """Moves troops to a nearby choke point"""
         target_coords = (troops[0].target.x, troops[0].target.y)
         choke_coords = (self.nearest_choke_point().x,
                         self.nearest_choke_point().y)
         if target_coords != choke_coords:
-            troops[0].move_units(self, self.nearest_choke_point())
+            troops[0].move_units(self.nearest_choke_point())
 
-    def expansion(self): #AW
+    def expansion(self):  # AW
         """Builds new command center when needed"""
         marines = UNIT_TYPEID.TERRAN_MARINE
         command_center = UNIT_TYPEID.TERRAN_COMMANDCENTER
@@ -406,7 +409,7 @@ class MyAgent(ScaiBackbone):
                     mineral_fields.append(unit)
         return mineral_fields
 
-    def get_geysers(self, base_location: BaseLocation) -> List[Unit]: #Kurssidan
+    def get_geysers(self, base_location: BaseLocation) -> List[Unit]:  # Kurssidan
         """ Given a base_location, this method will find and return a list of
             all geysers for that base """
         geysers = []
@@ -417,6 +420,7 @@ class MyAgent(ScaiBackbone):
                         and geyser.tile_position.y == unit.tile_position.y:
                     geysers.append(unit)
         return geysers
+
 
 if __name__ == "__main__":
     MyAgent.bootstrap()
