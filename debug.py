@@ -78,14 +78,14 @@ def print_unit_overview(self):
 def unit_assignment(self):
     """Creates dictionary of unit and assignment"""
     assignment = {}
-    #kollar vad för typ av target unit har å skapar en dict baserat på det
-    for unit in job_dict:
-        if unit in job_dict2 and job_dict[unit] == job_dict2[unit]:
-            print("unit changed jobs", unit, job_dict[unit], job_dict2[unit])
+    # kollar vad för typ av target unit har å skapar en dict baserat på det
+    for unit in self.job_dict:
+    #    if unit in job_dict2 and job_dict[unit] == job_dict2[unit]:
+    #        print("unit changed jobs", unit, job_dict[unit], job_dict2[unit])
         if unit.unit_type.is_worker:
-            if job_dict[unit].unit_type.is_mineral:
+            if self.job_dict[unit].unit_type.is_mineral:
                 assignment[unit] = "mineral"
-            elif job_dict[unit].unit_type.is_refinery:
+            elif self.job_dict[unit].unit_type.is_refinery:
                 assignment[unit] = "gas"
 
     return assignment
