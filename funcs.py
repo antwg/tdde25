@@ -107,6 +107,13 @@ def get_refineries_base(bot: IDABot, base_location: BaseLocation):
             ref.append(get_refinery(bot, geyser))
     return ref
 
+# ZW
+def can_afford(bot: IDABot, unit_type: UnitType) -> bool:
+    """Returns whenever a unit is affordable. """
+    return bot.minerals >= unit_type.mineral_price \
+        and bot.gas >= unit_type.gas_price \
+        and bot.max_supply - bot.current_supply \
+        >= unit_type.supply_required
 
 
 def get_my_workers(bot: IDABot):

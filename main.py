@@ -24,10 +24,6 @@ class MyAgent(ScaiBackbone):
     def on_step(self):
         """Called each cycle, passed from IDABot.on_step()."""
         ScaiBackbone.on_step(self)
-        for workplace in workplaces:
-            workplace.on_step(self)
-            if len(workplace.refineries) < 2:
-                self.build_refinery(workplace)
         print_debug(self)
        # self.get_coords()
         self.build_barrack()
@@ -39,6 +35,8 @@ class MyAgent(ScaiBackbone):
         self.train_marine()
         self.defence()
         self.expansion()
+        for workplace in workplaces:
+            workplace.on_step(self)
 
     def worker_do(self):
         for unit in get_my_workers(self):
@@ -47,34 +45,13 @@ class MyAgent(ScaiBackbone):
                     work = worker_seeks_workplace(unit.position)
                     work += unit
 
-        # DP
-    def build_refinery(self, workplace: Workplace):
-        """Builds a refinery at base location, then calls for collection"""
-        refinery = UnitType(UNIT_TYPEID.TERRAN_REFINERY, self)
-        geysers_list = get_my_geysers(self)
-
-        for geyser in geysers_list:
-            worker = workplace.get_suitable_builder()
-            if not currently_building(self, UNIT_TYPEID.TERRAN_REFINERY) and \
-                    get_refinery(self, geyser) is None and \
-                    self.can_afford(refinery):
-                worker.build_target(refinery, geyser)
-                workplace.update_workers()
-    # ZW
-    def can_afford(self, unit_type: UnitType) -> bool:
-        """Returns whenever a unit is affordable. """
-        return self.minerals >= unit_type.mineral_price \
-            and self.gas >= unit_type.gas_price \
-            and self.max_supply - self.current_supply \
-            >= unit_type.supply_required
-
     # ZW
     def train_scv(self):
         """Builds a SCV if possible on a base if needed."""
         scv_type = UnitType(UNIT_TYPEID.TERRAN_SCV, self)
         base_locations = self.get_base_locations_with_grounded_cc()
 
-        if self.can_afford(scv_type):
+        if can_afford(self, scv_type):
             for bl in base_locations:
                 scvs = get_my_workers(self)
                 ccs = list(filter(lambda cc: bl.contains_position(cc.position),
@@ -136,7 +113,7 @@ class MyAgent(ScaiBackbone):
                                             barracks)))
         for troop in troops:
             if troop.wants_marines - already_producing\
-                    and self.can_afford(marine):
+                    and can_afford(self, marine):
 
                 barrack = get_closest_unit(
                     list(filter(lambda b: b.is_idle, barracks)),
@@ -232,7 +209,7 @@ class MyAgent(ScaiBackbone):
             depot_position
 
         if len(get_my_type_units(self, marines)) >= 8\
-                and self.can_afford(command_center_type)\
+                and can_afford(self, command_center_type)\
                 and not currently_building(self, command_center):
             Unit.build(worker, command_center_type, location)
 

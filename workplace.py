@@ -43,6 +43,8 @@ class Workplace:
 
     def on_step(self, bot: IDABot,):
         self.refinery_finished(bot)
+        if len(self.refineries) < 2:
+            self.build_refinery(bot)
 
     def __init__(self, position: BaseLocation, bot: IDABot):
         """
@@ -61,14 +63,14 @@ class Workplace:
 
     # DP
     def refinery_finished(self, bot: IDABot):
-            """Adds new refinery and worker to a refinery"""
-            ref_list = get_refineries_base(bot, self.location)
-            if ref_list:
-                for refinery in ref_list:
-                    if refinery.is_completed and refinery not in self.refineries:
-                        self.refineries[refinery] = []
-                        self.target_gasers.append(refinery)
-                        self.update_workers(bot)
+        """Adds new refinery and worker to a refinery"""
+        ref_list = get_refineries_base(bot, self.location)
+        if ref_list:
+            for refinery in ref_list:
+                if refinery.is_completed and refinery not in self.refineries:
+                    self.refineries[refinery] = []
+                    self.target_gasers.append(refinery)
+                    self.update_workers(bot)
 
     # DP
     def update_workers(self, bot: IDABot):
@@ -82,7 +84,7 @@ class Workplace:
                             worker.right_click(refinery)
                 elif self.wants_miners:
                     self.miners.append(worker)
-                    worker.right_click(self.target_miners)
+                    worker.right_click(random.choice(self.target_miners))
                 else:
                     self.others.append(worker)
             elif self.wants_gasers and worker in self.miners and not worker.is_carrying_minerals:
@@ -92,6 +94,31 @@ class Workplace:
                         self.gasers.append(worker)
                         self.refineries[refinery].append(worker)
                         worker.right_click(refinery)
+            else:
+                self.miners.append(worker)
+                worker.right_click(random.choice(self.target_miners))
+
+        # DP
+
+    def build_refinery(self, bot: IDABot):
+        """Builds a refinery at base location, then calls for collection"""
+        refinery = UnitType(UNIT_TYPEID.TERRAN_REFINERY, bot)
+        geysers_list = get_my_geysers(bot)
+
+        for geyser in geysers_list:
+            if self.get_suitable_builder() is not None:
+                worker = self.get_suitable_builder()
+            elif self.miners:
+                worker = random.choice(self.miners)
+            else:
+                continue
+
+            if not currently_building(bot, UNIT_TYPEID.TERRAN_REFINERY) and \
+                    get_refinery(bot, geyser) is None and \
+                    can_afford(bot, refinery):
+                worker.build_target(refinery, geyser)
+                self.update_workers(bot)
+
 
     # DP
     def get_suitable_builder(self):
