@@ -19,18 +19,20 @@ class MyAgent(ScaiBackbone):
         ScaiBackbone.on_game_start(self)
         create_troop(Point2D(35, 123))
         create_workplace(self.base_location_manager \
-        .get_player_starting_base_location(PLAYER_SELF))
+        .get_player_starting_base_location(PLAYER_SELF), self)
 
     def on_step(self):
         """Called each cycle, passed from IDABot.on_step()."""
+        ScaiBackbone.on_step(self)
         for workplace in workplaces:
             workplace.on_step(self)
-        ScaiBackbone.on_step(self)
+            if len(workplace.refineries) < 2:
+                self.build_refinery(workplace)
         print_debug(self)
        # self.get_coords()
         self.build_barrack()
         self.build_supply_depot()
-       # self.mine_minerals()
+        self.worker_do()
         self.train_scv()
        # self.build_refinery()
        # self.gather_gas()
@@ -38,34 +40,26 @@ class MyAgent(ScaiBackbone):
         self.defence()
         self.expansion()
 
-    # DP
-    def mine_minerals(self):
-        """Makes workers mine at starting base"""
-        for unit in self.get_my_workers(self):
+    def worker_do(self):
+        for unit in get_my_workers(self):
             for workplace in workplaces:
-                if unit.is_idle and unit not in workplace:
+                if unit.is_idle and not workplace.has_unit(unit):
+                    work = worker_seeks_workplace(unit.position)
+                    work += unit
 
+        # DP
+    def build_refinery(self, workplace: Workplace):
+        """Builds a refinery at base location, then calls for collection"""
+        refinery = UnitType(UNIT_TYPEID.TERRAN_REFINERY, self)
+        geysers_list = get_my_geysers(self)
 
-                    if marines:
-                        for marine in marines:
-                            troop = marine_seeks_troop(marine.position)
-                            if troop:
-                                troop += marine
-
-
-
-    def is_worker_collecting_gas(self, worker):
-        """ Returns: True if a Unit `worker` is collecting gas, False otherwise """
-
-        def squared_distance(unit_1, unit_2):
-            p1 = unit_1.position
-            p2 = unit_2.position
-            return (p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2
-
-        for refinery in get_my_refineries(self):
-            if refinery.is_completed and squared_distance(worker, refinery) < 2 ** 2:
-                return True
-
+        for geyser in geysers_list:
+            worker = workplace.get_suitable_builder()
+            if not currently_building(self, UNIT_TYPEID.TERRAN_REFINERY) and \
+                    get_refinery(self, geyser) is None and \
+                    self.can_afford(refinery):
+                worker.build_target(refinery, geyser)
+                workplace.update_workers()
     # ZW
     def can_afford(self, unit_type: UnitType) -> bool:
         """Returns whenever a unit is affordable. """

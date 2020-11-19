@@ -2,6 +2,21 @@ from typing import Iterator, List, Optional
 
 from library import *
 
+terran_buildings_ids = [
+    UNIT_TYPEID.TERRAN_COMMANDCENTER, UNIT_TYPEID.TERRAN_ORBITALCOMMAND,
+    UNIT_TYPEID.TERRAN_PLANETARYFORTRESS, UNIT_TYPEID.TERRAN_SUPPLYDEPOT,
+    UNIT_TYPEID.TERRAN_REFINERY, UNIT_TYPEID.TERRAN_REFINERYRICH,
+    UNIT_TYPEID.TERRAN_BARRACKS, UNIT_TYPEID.TERRAN_BARRACKSREACTOR,
+    UNIT_TYPEID.TERRAN_BARRACKSREACTOR, UNIT_TYPEID.TERRAN_BUNKER,
+    UNIT_TYPEID.TERRAN_ENGINEERINGBAY, UNIT_TYPEID.TERRAN_FACTORY,
+    UNIT_TYPEID.TERRAN_FACTORYREACTOR, UNIT_TYPEID.TERRAN_FACTORYTECHLAB,
+    UNIT_TYPEID.TERRAN_MISSILETURRET, UNIT_TYPEID.TERRAN_SENSORTOWER,
+    UNIT_TYPEID.TERRAN_GHOSTACADEMY, UNIT_TYPEID.TERRAN_ARMORY,
+    UNIT_TYPEID.TERRAN_STARPORT, UNIT_TYPEID.TERRAN_STARPORTREACTOR,
+    UNIT_TYPEID.TERRAN_STARPORTTECHLAB, UNIT_TYPEID.TERRAN_FUSIONCORE,
+    UNIT_TYPEID.TERRAN_TECHLAB, UNIT_TYPEID.TERRAN_REACTOR
+]
+
 
 def get_closest_unit(units: Iterator[Unit], position: Point2D):
     """Get closest unit in ist to position."""
@@ -83,6 +98,17 @@ def get_my_geysers(bot: IDABot):
     return gey_list
 
 
+# DP
+def get_refineries_base(bot: IDABot, base_location: BaseLocation):
+    """Returns list of refineries in base location"""
+    ref = []
+    for geyser in get_geysers(bot, base_location):
+        if get_refinery(bot, geyser) is not None:
+            ref.append(get_refinery(bot, geyser))
+    return ref
+
+
+
 def get_my_workers(bot: IDABot):
     """Makes a list of workers"""
     workers = []
@@ -127,3 +153,12 @@ def currently_building(bot: IDABot, unit_type): #AW
         return True
     else:
         return False
+
+
+def builder_currently_building(bot: IDABot, builder):
+    """return true if builder is building, false otherwise."""
+    for buildingID in terran_buildings_ids:
+        if builder.is_constructing(UnitType(buildingID, bot)):
+            return True
+        else:
+            return False
