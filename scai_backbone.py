@@ -61,7 +61,7 @@ class ScaiBackbone(IDABot):
         bot1 = cls()
         # bot2 = cls()
 
-        participant_1 = create_participants(Race.Terran, bot1, "Gerald - SCAI-07")
+        participant_1 = create_participants(Race.Terran, bot1, "Dank_mejmejs - SCAI-07")
         # participant_2 = create_participants(Race.Terran, bot2)
         participant_2 = create_computer(Race.Random, Difficulty.Easy)
 

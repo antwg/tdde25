@@ -39,6 +39,15 @@ class MyAgent(ScaiBackbone):
         self.defence()
         self.expansion()
 
+    def side(self):
+        start_location = self.base_location_manager.\
+            get_player_starting_base_location(PLAYER_SELF).position
+        start_location_tuple = (start_location.x, start_location.y)
+
+        if start_location_tuple == (127.750000, 28.500000):
+            return 'right'
+        else:
+            return 'left'
     def on_new_my_unit(self, unit: Unit):
         """Called each time a new unit is noticed."""
         print(unit)
@@ -85,7 +94,8 @@ class MyAgent(ScaiBackbone):
 
     def get_all_minerals(self):
         total = []
-        for base in self.base_location_manager.get_occupied_base_locations(PLAYER_SELF):
+        for base in self.base_location_manager.get_occupied_base_locations\
+                (PLAYER_SELF):
             minerals = self.get_mineral_fields(base)
             total += minerals
         return total
@@ -288,16 +298,10 @@ class MyAgent(ScaiBackbone):
                         cc.train(scv_type)
 
     def currently_building(self, unit_type): #AW
-        """"Checks if a unit is being built"""
-        value = 0
-        for unit in self.get_my_units():
-            if unit.unit_type.unit_typeid == unit_type\
-                    and not unit.is_completed:
-                value = value + 1
-        if value >= 1:
-            return True
-        else:
-            return False
+        """"Checks if a unit is currently being built"""
+        return any([unit.build_percentage < 1 for unit in
+                    self.get_my_type_units(unit_type)])
+
 
     # ZW
     def train_marine(self):
@@ -324,12 +328,16 @@ class MyAgent(ScaiBackbone):
 
     def building_location_finder(self, unit_type):
         """Finds a suitable location to build a unit of given type"""
-        home_base = self .base_location_manager.\
+        home_base = self.base_location_manager.\
             get_player_starting_base_location(PLAYER_SELF).position
         home_base_2di = Point2DI(int(home_base.x), int(home_base.y))
         location = self.building_placer.get_build_location_near(home_base_2di,
-                                                                unit_type, 5)
-        return location
+                                                                unit_type)
+        if self.building_placer.can_build_here_with_spaces(location.x, location.y,
+                                                           unit_type, 5):
+            return location
+        else:
+            raise SyntaxError
 
     def squared_distance_p2d(self, p1: Point2D, p2: Point2D) -> float:
         """Gives the squared distance between two Point2D points"""
@@ -375,7 +383,9 @@ class MyAgent(ScaiBackbone):
                 and len(self.get_my_type_units(UNIT_TYPEID.TERRAN_BARRACKS)) <\
                 self.max_number_of_barracks()\
                 and not self.currently_building(UNIT_TYPEID.TERRAN_BARRACKS):
+            print(self.currently_building(UNIT_TYPEID.TERRAN_BARRACKS))
             Unit.build(worker, barrack, location)
+            print('building barrack')
 
     def max_number_of_barracks(self):  # AW
         """Determines the suitable number of barracks"""
@@ -386,36 +396,43 @@ class MyAgent(ScaiBackbone):
         """Calculates the squared distance between 2 points"""
         return (p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2
 
-    def nearest_choke_point(self):  # AW
+    def start_choke_point(self):  # AW
         """Returns the choke point closest to command center"""
-        home_base = (self.base_location_manager.
-                     get_player_starting_base_location(PLAYER_SELF).position)
-        home_base_tuple = (int(home_base.x), int(home_base.y))
-        point1 = (119, 47)
-        point2 = (33, 120)
-
-        if (self.squared_distance(home_base_tuple, point1)
-                < self.squared_distance(home_base_tuple, point2)):
+        if self.side() == 'right':
             return Point2D(119, 47)
         else:
             return Point2D(33, 120)
 
     def defence(self):  # AW
         """Moves troops to a nearby choke point"""
-        target_coords = (troops[0].target.x, troops[0].target.y)
-        choke_coords = (self.nearest_choke_point().x,
-                        self.nearest_choke_point().y)
+        bases = len(self.base_location_manager.get_occupied_base_locations
+                    (PLAYER_SELF)) - 1
+        target_coords = (troops[bases].target.x, troops[bases].target.y)
+        choke_coords = (self.choke_points(bases).x, self.choke_points(bases).y)
+
         if target_coords != choke_coords:
-            troops[0].move_units(self.nearest_choke_point())
+            troops[0].move_units(self.choke_points(bases))
+
+    def choke_points(self, base_nr):
+        """Returns the appropriate choke point"""
+        left = [Point2D(33, 120), Point2D(37, 110), Point2D(37, 110)]
+        right = [Point2D(119, 47), Point2D(114, 58), Point2D(114, 58)]
+
+        if self.side() == 'left':
+            return left[base_nr]
+        elif self.side() == 'right':
+            return right[base_nr]
+        else:
+            raise IndexError('Choke point list out of range')
 
     def expansion(self):  # AW
         """Builds new command center when needed"""
         marines = UNIT_TYPEID.TERRAN_MARINE
         command_center = UNIT_TYPEID.TERRAN_COMMANDCENTER
         command_center_type = UnitType(UNIT_TYPEID.TERRAN_COMMANDCENTER, self)
-        worker = random.choice(self.get_my_workers())
         location = self.base_location_manager.get_next_expansion(PLAYER_SELF).\
             depot_position
+        worker = self.nearest_worker(location)
 
         if len(self.get_my_type_units(marines)) >= \
                 len(self.base_location_manager.get_occupied_base_locations
@@ -423,6 +440,9 @@ class MyAgent(ScaiBackbone):
                 and self.can_afford(command_center_type)\
                 and not self.currently_building(command_center):
             Unit.build(worker, command_center_type, location)
+            create_troop(self.choke_points(len(self.base_location_manager.
+                                               get_occupied_base_locations
+                                               (PLAYER_SELF))))
 
     def get_mineral_fields(self, base_location: BaseLocation) -> List[Unit]: #Kurssidan
         """ Given a base_location, this method will find and return a list of
