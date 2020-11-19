@@ -38,6 +38,40 @@ class MyAgent(ScaiBackbone):
         for workplace in workplaces:
             workplace.on_step(self)
 
+    def on_new_my_unit(self, unit: Unit):
+        """Called each time a new unit is noticed."""
+        if unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_SUPPLYDEPOT:
+            unit.ability(ABILITY_ID.MORPH_SUPPLYDEPOT_LOWER)
+        elif unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_MARINE:
+            troop = marine_seeks_troop(unit.position)
+            if troop:
+                troop += unit
+
+        elif unit.unit_type.unit_typeid in refineries_TYPEIDS:
+            work = worker_seeks_workplace(unit.position)
+            work.refineries[unit] = []
+            work.target_gasers.append(unit)
+            work.update_workers(self)
+
+    remember_these: List[Unit] = []
+
+    def look_for_new_units(self):
+        """Find units that has not been noticed by the bot."""
+        temp_remember_these = self.remember_these.copy()
+        for unit in self.get_all_units():
+            if unit not in temp_remember_these:
+                if unit.is_completed and unit.is_alive and unit.is_valid:
+                    self.remember_these.append(unit)
+                    if unit.owner == self.id:
+                        self.on_new_my_unit(unit)
+            else:
+                temp_remember_these.remove(unit)
+                if not unit.is_completed or not unit.is_alive or not unit.is_valid:
+                    self.remember_these.remove(unit)
+        for remembered_unit in temp_remember_these:
+            # How to handle not found units?
+            pass
+
     def worker_do(self):
         for unit in get_my_workers(self):
             for workplace in workplaces:

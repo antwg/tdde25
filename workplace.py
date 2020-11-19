@@ -42,7 +42,6 @@ class Workplace:
                                         if not self.under_attack else 0)
 
     def on_step(self, bot: IDABot,):
-        self.refinery_finished(bot)
         if len(self.refineries) < 2:
             self.build_refinery(bot)
 
@@ -60,17 +59,6 @@ class Workplace:
 
         self.target_miners = get_mineral_fields(bot, position)
         self.target_gasers = []
-
-    # DP
-    def refinery_finished(self, bot: IDABot):
-        """Adds new refinery and worker to a refinery"""
-        ref_list = get_refineries_base(bot, self.location)
-        if ref_list:
-            for refinery in ref_list:
-                if refinery.is_completed and refinery not in self.refineries:
-                    self.refineries[refinery] = []
-                    self.target_gasers.append(refinery)
-                    self.update_workers(bot)
 
     # DP
     def update_workers(self, bot: IDABot):
