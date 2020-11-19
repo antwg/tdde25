@@ -8,7 +8,7 @@ class GatheringCenter(Structure):
     """Central for gathering stuff at base locations."""
 
     name: str = 'GatheringCenter'
-    demand: int = 100
+    demand: int = 20
 
     base_location_p: Point2D
 
@@ -27,10 +27,10 @@ class GatheringCenter(Structure):
         else:
             raise Exception("Gathering center is not within a base location!")
 
-    def on_step(self, bot: IDABot, unit: Unit):
-        super().on_step(bot, unit)
+    def on_step(self, bot: IDABot):
+        super().on_step(bot)
 
-    def on_discharge(self, bot: IDABot, unit: Unit):
+    def on_discharge(self, bot: IDABot):
         del Gatherer.clients[self]
         del Refinery.clients[self]
 

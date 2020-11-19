@@ -31,4 +31,3 @@ class SupplyDepot(Structure):
         else:
             supply_left = bot.max_supply - bot.current_supply
             return 100 * (0.5**(supply_left/20))
-

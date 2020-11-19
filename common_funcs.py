@@ -1,7 +1,6 @@
 from library import *
 from math import sqrt
-from typing import Union, List
-
+from typing import Union, List, Callable
 
 minerals_TYPEID = [UNIT_TYPEID.NEUTRAL_MINERALFIELD,
                    UNIT_TYPEID.NEUTRAL_MINERALFIELD450,
@@ -27,7 +26,14 @@ grounded_command_center_TYPEID = [UNIT_TYPEID.TERRAN_COMMANDCENTER,
                                   UNIT_TYPEID.TERRAN_PLANETARYFORTRESS]
 
 supply_TYPEID = [UNIT_TYPEID.TERRAN_SUPPLYDEPOT,
-                  UNIT_TYPEID.TERRAN_SUPPLYDEPOTLOWERED]
+                 UNIT_TYPEID.TERRAN_SUPPLYDEPOTLOWERED]
+
+on_target_builds_TYPEID = [
+    UNIT_TYPEID.TERRAN_REFINERY,
+    UNIT_TYPEID.TERRAN_REFINERYRICH,
+    UNIT_TYPEID.TERRAN_TECHLAB,
+    UNIT_TYPEID.TERRAN_REACTOR
+]
 
 
 # Get distance from this point to the next
@@ -105,13 +111,31 @@ def find_units_base_location(bot: IDABot, unit: Unit):
     return find_base_location_on_point(bot, unit.position)
 
 
-def click_closest_mineral(bot: IDABot, unit: Unit):
-    mineral = find_closest_mineralfield(bot, unit.position)
-    unit.right_click(mineral)
-
-
 def get_provided_supply(bot: IDABot):
     supply = 0
     for unit in find_my_units_with_types(supply_TYPEID, bot):
         supply += unit.supply_provided
     return supply
+
+
+# TODO: Finish function
+def get_closest_target():
+    pass
+
+
+def produce_unit(bot: IDABot, unit: Unit, ut: UnitType, where_func: Callable) -> bool:
+    where = where_func(bot, unit, ut)
+    if not where:
+        unit.train(ut)
+        return True
+    elif isinstance(where, Unit):
+        unit.build_target(ut, where)
+        return True
+    elif isinstance(where, Point2DI):
+        unit.build(ut, where)
+        return True
+    elif isinstance(where, Point2D):
+        unit.build(ut, where.to_i)
+        return True
+    else:
+        return False

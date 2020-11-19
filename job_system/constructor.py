@@ -19,7 +19,7 @@ construct_queue = []
 
 def add_building_request(what: UnitType, where: Union[Point2D, UnitType],
                          need: int = 10):
-    construct_queue.add(ConstructionOrder(what, where, need))
+    construct_queue.append(ConstructionOrder(what, where, need))
 
 
 # ZW
@@ -46,4 +46,3 @@ class Builder(Worker):
             return 20 + 2*len(construct_queue)
         else:
             return 0
-

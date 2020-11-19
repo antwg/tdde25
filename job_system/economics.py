@@ -30,12 +30,15 @@ class Gatherer(Worker):
         super().__init__(bot, unit)
 
         self.gathering_center = self.most_demanding_client(bot)
-        click_closest_mineral(bot, self.gathering_center.get_unit(bot))
+        self.unit.right_click(
+            find_closest_mineralfield(bot, self.gathering_center.unit.position))
 
-    def on_step(self, bot: IDABot, unit: Unit):
-        if unit.is_idle:
-            click_closest_mineral(bot, unit)
-        super().on_step(bot, unit)
+    def on_step(self, bot: IDABot):
+        if self.unit.is_idle:
+            self.unit.right_click(
+                find_closest_mineralfield(bot,
+                                          self.gathering_center.unit.position))
+        super().on_step(bot)
 
     @classmethod
     def is_qualified(cls, bot: IDABot, unit: Unit):
@@ -62,13 +65,13 @@ class GathererGas(Worker):
 
     def __init__(self, bot: IDABot, unit: Unit, target: Type[Job]):
         self.target = target
-        unit.right_click(target.get_unit(bot))
+        unit.right_click(target.unit)
         super().__init__(bot, unit)
 
-    def on_step(self, bot: IDABot, unit: Unit):
+    def on_step(self, bot: IDABot):
         # if unit.is_idle:
         # click_closest_refinery(bot, unit)
-        super().on_step(bot, unit)
+        super().on_step(bot)
 
     @classmethod
     def is_qualified(cls, bot: IDABot, unit: Unit):
@@ -92,10 +95,10 @@ class Refinery(Structure):
 
         GathererGas.clients[self] = 3
 
-    def on_step(self, bot: IDABot, unit: Unit):
-        super().on_step(bot, unit)
+    def on_step(self, bot: IDABot):
+        super().on_step(bot)
 
-    def on_discharge(self, bot: IDABot, unit: Unit):
+    def on_discharge(self, bot: IDABot):
         del GathererGas.clients[self]
 
     @classmethod

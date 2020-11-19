@@ -21,20 +21,21 @@ class MyAgent(ScaiBackbone):
         for unit in self.get_my_units():
             job = find_unit_job(unit)
             if job:
-                job.on_step(self, unit)
+                if job.is_bored():
+                    Employer.snark_job(self, job)
+
+                if job.committed_plan:
+                    job.invest(self)
+                else:
+                    job.on_step(self)
             elif not Employer.is_banned(unit):
                 Employer.assign(self, unit)
 
-        # DP
-    def print_debug(self):
-        """Function that displays the units type, id and enumerate index"""
-
-        unit_list = self.get_all_units()
-        for i, unit in list(enumerate(unit_list)):
-            text = str((unit.unit_type, "ID:", unit.id, "I:", i))
-            self.map_tools.draw_text(unit.position, text, Color(255, 255, 255))
+    def can_afford(self, ut: UnitType) -> bool:
+        return ut.mineral_price <= self.minerals \
+                and ut.gas_price <= self.gas \
+                and ut.supply_required <= self.max_supply - self.current_supply
 
 
 if __name__ == "__main__":
     MyAgent.bootstrap()
-
