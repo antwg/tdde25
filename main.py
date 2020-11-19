@@ -1,5 +1,6 @@
 import time
 import random
+from copy import deepcopy
 from typing import List
 
 from scai_backbone import *
@@ -15,6 +16,8 @@ job_dict = {}
 class MyAgent(ScaiBackbone):
     """In game bot."""
 
+    id: int  # The value of owner in it's units that corresponds to this player
+
     def on_game_start(self):
         """Called on start up, passed from IDABot.on_game_start()."""
         ScaiBackbone.on_game_start(self)
@@ -25,6 +28,7 @@ class MyAgent(ScaiBackbone):
         ScaiBackbone.on_step(self)
         print_debug(self, job_dict)
 
+        self.look_for_new_units()
         self.build_barrack()
         self.build_supply_depot()
         self.mine_minerals()
@@ -34,6 +38,40 @@ class MyAgent(ScaiBackbone):
         self.train_marine()
         self.defence()
         self.expansion()
+
+    def on_new_my_unit(self, unit: Unit):
+        """Called each time a new unit is noticed."""
+        print(unit)
+        if unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_SUPPLYDEPOT:
+            unit.ability(ABILITY_ID.MORPH_SUPPLYDEPOT_LOWER)
+        elif unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_MARINE:
+            troop = marine_seeks_troop(unit.position)
+            if troop:
+                troop += unit
+        elif unit.unit_type.unit_typeid in [UNIT_TYPEID.TERRAN_SIEGETANK,
+                                            UNIT_TYPEID.TERRAN_SIEGETANKSIEGED]:
+            troop = tank_seeks_troop(unit.position)
+            if troop:
+                troop += unit
+
+    remember_these: List[Unit] = []
+
+    def look_for_new_units(self):
+        """Find units that has not been noticed by the bot."""
+        temp_remember_these = self.remember_these.copy()
+        for unit in self.get_all_units():
+            if unit not in temp_remember_these:
+                if unit.is_completed and unit.is_alive and unit.is_valid:
+                    self.remember_these.append(unit)
+                    if unit.owner == self.id:
+                        self.on_new_my_unit(unit)
+            else:
+                temp_remember_these.remove(unit)
+                if not unit.is_completed or not unit.is_alive or not unit.is_valid:
+                    self.remember_these.remove(unit)
+        for remembered_unit in temp_remember_these:
+            # How to handle not found units?
+            pass
 
     # DP
     def mine_minerals(self):
@@ -47,7 +85,7 @@ class MyAgent(ScaiBackbone):
 
     def get_all_minerals(self):
         total = []
-        for base in self.get_base_locations_with_grounded_cc():
+        for base in self.base_location_manager.get_occupied_base_locations(PLAYER_SELF):
             minerals = self.get_mineral_fields(base)
             total += minerals
         return total
@@ -74,7 +112,7 @@ class MyAgent(ScaiBackbone):
 
         # TODO: Make it return the value correctly
         # ARGH!!! AbilityID is the one to solve it but it's broken!
-        # An AbilityID can't be compared to another or ABILITY_ID. WHY?!
+        # An AbilityID can't be compared to another or a ABILITY_ID. WHY?!
         return worker.unit_type.is_worker \
             and worker.has_target \
             and worker.target.unit_type.unit_typeid in minerals_TYPEIDS \
@@ -265,17 +303,6 @@ class MyAgent(ScaiBackbone):
     def train_marine(self):
         """Train marines if more are required."""
 
-        # ___Try to fill troops with lone marines first___
-        marines = list(filter(lambda unit: not any([trp.has_unit(unit)
-                                                    for trp in troops]),
-                              self.get_my_type_units(
-                                  UNIT_TYPEID.TERRAN_MARINE)))
-        if marines:
-            for marine in marines:
-                troop = marine_seeks_troop(marine.position)
-                if troop:
-                    troop += marine
-
         # ___Try to fill troops by producing marines___
         barracks = self.get_my_type_units(UNIT_TYPEID.TERRAN_BARRACKS)
         marine = UnitType(UNIT_TYPEID.TERRAN_MARINE, self)
@@ -283,7 +310,7 @@ class MyAgent(ScaiBackbone):
         not_promised_marine = len(list(filter(
             lambda b: b.is_constructing(marine), barracks)))
         for troop in troops:
-            if troop.wants_marines - not_promised_marine\
+            if troop.wants_marines - not_promised_marine > 0\
                     and self.can_afford(marine):
 
                 barrack = get_closest_unit(
