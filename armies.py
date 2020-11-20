@@ -93,7 +93,7 @@ def marine_seeks_troop(position: Point2D) -> Troop:
     closest = None
     distance = 0
     for troop in troops:
-        if not closest or troop.target.dist(position) * max(troop.wants_marines, 0.1) < distance:
+        if not closest or troop.target.dist(position) / max(troop.wants_marines, 0.1) < distance:
             closest = troop
             distance = troop.target.dist(position)
     return closest
@@ -104,7 +104,7 @@ def tank_seeks_troop(position: Point2D) -> Troop:
     closest = None
     distance = 0
     for troop in troops:
-        if not closest or troop.target.dist(position) * max(troop.wants_tanks, 0.1) < distance:
+        if not closest or troop.target.dist(position) / max(troop.wants_tanks, 0.1) < distance:
             closest = troop
             distance = troop.target.dist(position)
     return closest

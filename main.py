@@ -39,6 +39,7 @@ class MyAgent(ScaiBackbone):
         self.expansion()
 
     def side(self):
+        """Return what side player spawns on"""
         start_location = self.base_location_manager.\
             get_player_starting_base_location(PLAYER_SELF).position
         start_location_tuple = (start_location.x, start_location.y)
@@ -344,12 +345,7 @@ class MyAgent(ScaiBackbone):
 
     def nearest_worker(self, location):
         """Finds the nearest worker given a location"""
-        worker_list = []
-        for worker in self.get_my_workers():
-            distance = self.squared_distance_p2d(location, worker.position)
-            worker_tuple = (distance, worker)
-            worker_list.append(worker_tuple)
-        return sorted(worker_list, key=lambda tup: tup[0])[0][1]
+        return self.nearest_unit_list(self.get_my_workers(), location)
 
     def nearest_unit_list(self, units, location):
         """Finds the nearest unit in a list given a location"""
