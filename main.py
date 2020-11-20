@@ -35,6 +35,7 @@ class MyAgent(ScaiBackbone):
         self.train_marine()
         self.defence()
         self.expansion()
+        self.look_for_new_units()
         for workplace in workplaces:
             workplace.on_step(self)
 
@@ -49,9 +50,10 @@ class MyAgent(ScaiBackbone):
 
         elif unit.unit_type.unit_typeid in refineries_TYPEIDS:
             work = worker_seeks_workplace(unit.position)
-            work.refineries[unit] = []
-            work.target_gasers.append(unit)
-            work.update_workers(self)
+            print("wtf ref")
+            if work:
+                work += unit
+                work.update_workers(self)
 
     remember_these: List[Unit] = []
 

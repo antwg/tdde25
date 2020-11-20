@@ -76,7 +76,7 @@ class Workplace:
                 else:
                     self.others.append(worker)
                     #do smthing :)
-            elif self.wants_gasers and worker in self.miners and not worker.is_carrying_minerals:
+            elif self.wants_gasers and worker in self.miners:
                 for refinery, units in self.refineries.items():
                     if refinery.is_completed and len(units) < 3:
                         self.miners.remove(worker)
@@ -95,18 +95,14 @@ class Workplace:
         geysers_list = get_my_geysers(bot)
 
         for geyser in geysers_list:
-            if self.get_suitable_builder() is not None:
-                worker = self.get_suitable_builder()
-            elif self.miners:
-                worker = random.choice(self.miners)
-            else:
-                continue
-
             if not currently_building(bot, UNIT_TYPEID.TERRAN_REFINERY) and \
                     get_refinery(bot, geyser) is None and \
                     can_afford(bot, refinery):
+                if self.get_suitable_builder() is not None:
+                    worker = self.get_suitable_builder()
+
                 worker.build_target(refinery, geyser)
-                self.update_workers(bot)
+
 
 
     # DP
@@ -117,6 +113,8 @@ class Workplace:
                 self.miners.remove(unit)
                 self.builders.append(unit)
                 return unit
+        else:
+            return random.choice(self.miners)
 
 
     def get_units(self, bot: IDABot):
@@ -154,15 +152,24 @@ class Workplace:
             print("hej!", unit)
             if unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_SCV:
                 self.workers.append(unit)
+
                 if self.wants_gasers:
+
                     for refinery, units in self.refineries.items():
+
                         if refinery.is_completed and len(units) < 3:
                             self.gasers.append(unit)
                             self.refineries[refinery].append(unit)
                             unit.right_click(refinery)
+
                 elif self.wants_miners:
                     self.miners.append(unit)
                     unit.right_click(random.choice(self.target_miners))
+
+            elif unit.unit_type.unit_typeid in refinery_TYPEID:
+                self.refineries[unit] = []
+                self.target_gasers.append(unit)
+
             else:
                 self.others.append(unit)
 
