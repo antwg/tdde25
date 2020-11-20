@@ -75,6 +75,7 @@ class Workplace:
                     worker.right_click(random.choice(self.target_miners))
                 else:
                     self.others.append(worker)
+                    #do smthing :)
             elif self.wants_gasers and worker in self.miners and not worker.is_carrying_minerals:
                 for refinery, units in self.refineries.items():
                     if refinery.is_completed and len(units) < 3:
