@@ -50,9 +50,8 @@ class MyAgent(ScaiBackbone):
 
         elif unit.unit_type.unit_typeid in refineries_TYPEIDS:
             work = worker_seeks_workplace(unit.position)
-            print("wtf ref")
             if work:
-                work += unit
+                work.add_refinery(unit)
                 work.update_workers(self)
 
     remember_these: List[Unit] = []

@@ -42,14 +42,18 @@ Point2D.dist = lambda self, other: sqrt((self.x - other.x)**2
 class ScaiBackbone(IDABot):
     def __init__(self):
         IDABot.__init__(self)
-        self.job_dict = {}
-        self.job_dict2 = {}
+        self.id = None
 
     def on_game_start(self):
         IDABot.on_game_start(self)
 
     def on_step(self):
         IDABot.on_step(self)
+        if not self.id:
+            for unit in self.get_my_units():
+                self.id = unit.owner
+                print("ID:", self.id)
+                break
 
     @classmethod
     def bootstrap(cls):

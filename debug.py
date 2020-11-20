@@ -1,6 +1,6 @@
 import time
 from scai_backbone import *
-
+from workplace import *
 
 def print_debug(self):
     # Skriver ut (< UnitType >  id: < id >  i: < enumereringsindex >)
@@ -76,19 +76,17 @@ def print_unit_overview(self):
 
     # DP
 def unit_assignment(self):
-    """Creates dictionary of unit and assignment"""
+    """Creates dictionary of unit and assignment, for the class Workplace"""
     assignment = {}
-    # kollar vad för typ av target unit har å skapar en dict baserat på det
-    for unit in self.job_dict:
-    #    if unit in job_dict2 and job_dict[unit] == job_dict2[unit]:
-    #        print("unit changed jobs", unit, job_dict[unit], job_dict2[unit])
-        if unit.unit_type.is_worker:
-            if self.job_dict[unit].unit_type.is_mineral:
-                assignment[unit] = "mineral"
-            elif self.job_dict[unit].unit_type.is_refinery:
-                assignment[unit] = "gas"
+    for workplace in workplaces:
+        for miner in workplace.miners:
+            assignment[miner] = "miner"
+        for gaser in workplace.gasers:
+            assignment[gaser] = "gas_gatherer"
+        for builder in workplace.builders:
+            assignment[builder] = "builder"
 
-    return assignment
+        return assignment
 
 
 def assignment_amount(self):

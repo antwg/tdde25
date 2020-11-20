@@ -67,16 +67,18 @@ class Workplace:
                 if self.wants_gasers:
                     for refinery, units in self.refineries.items():
                         if refinery.is_completed and len(units) < 3:
+                            self.builders.remove(worker)
                             self.gasers.append(worker)
                             self.refineries[refinery].append(worker)
                             worker.right_click(refinery)
                 elif self.wants_miners:
+                    self.builders.remove(worker)
                     self.miners.append(worker)
                     worker.right_click(random.choice(self.target_miners))
                 else:
                     self.others.append(worker)
                     #do smthing :)
-            elif self.wants_gasers and worker in self.miners:
+            elif self.wants_gasers and worker in self.miners and worker not in self.gasers:
                 for refinery, units in self.refineries.items():
                     if refinery.is_completed and len(units) < 3:
                         self.miners.remove(worker)
@@ -98,9 +100,7 @@ class Workplace:
             if not currently_building(bot, UNIT_TYPEID.TERRAN_REFINERY) and \
                     get_refinery(bot, geyser) is None and \
                     can_afford(bot, refinery):
-                if self.get_suitable_builder() is not None:
-                    worker = self.get_suitable_builder()
-
+                worker = self.get_suitable_builder()
                 worker.build_target(refinery, geyser)
 
 
@@ -113,8 +113,7 @@ class Workplace:
                 self.miners.remove(unit)
                 self.builders.append(unit)
                 return unit
-        else:
-            return random.choice(self.miners)
+        return random.choice(self.miners)
 
 
     def get_units(self, bot: IDABot):
@@ -166,31 +165,32 @@ class Workplace:
                     self.miners.append(unit)
                     unit.right_click(random.choice(self.target_miners))
 
-            elif unit.unit_type.unit_typeid in refinery_TYPEID:
-                self.refineries[unit] = []
-                self.target_gasers.append(unit)
-
             else:
                 self.others.append(unit)
 
 
-# All troops!
+    def add_refinery(self, refinery):
+        self.refineries[refinery] = []
+        self.target_gasers.append(refinery)
+
+# All workplaces!
 workplaces = []
 
 
-# ZW
+# DP
 def create_workplace(bot: IDABot, location: BaseLocation):
     """Create"""
     workplaces.append(Workplace(bot, location))
 
 
-# ZW
+# DP, ZW
 def worker_seeks_workplace(pos: Point2D) -> Workplace:
     """Checks the closest workplace to a position"""
     closest = None
     distance = 0
     for workplace in workplaces:
-        if not closest or distance < workplace.position.location.dist(pos):
+        if not closest or distance > workplace.location.position.dist(pos):
             closest = workplace
             distance = workplace.location.position.dist(pos)
+
     return closest
