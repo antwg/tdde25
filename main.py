@@ -16,12 +16,11 @@ job_dict = {}
 class MyAgent(ScaiBackbone):
     """In game bot."""
 
-    id: int  # The value of owner in it's units that corresponds to this player
-
     def on_game_start(self):
         """Called on start up, passed from IDABot.on_game_start()."""
         ScaiBackbone.on_game_start(self)
         create_troop(Point2D(35, 123))
+        self.unit = None
 
     def on_step(self):
         """Called each cycle, passed from IDABot.on_step()."""
@@ -48,6 +47,7 @@ class MyAgent(ScaiBackbone):
             return 'right'
         else:
             return 'left'
+
     def on_new_my_unit(self, unit: Unit):
         """Called each time a new unit is noticed."""
         print(unit)
@@ -119,7 +119,6 @@ class MyAgent(ScaiBackbone):
     # ZW
     def is_worker_collecting_minerals(self, worker: Unit):
         """Returns: True if a unit is collecting Minerals, False otherwise."""
-
         # TODO: Make it return the value correctly
         # ARGH!!! AbilityID is the one to solve it but it's broken!
         # An AbilityID can't be compared to another or a ABILITY_ID. WHY?!
@@ -302,7 +301,6 @@ class MyAgent(ScaiBackbone):
         return any([unit.build_percentage < 1 for unit in
                     self.get_my_type_units(unit_type)])
 
-
     # ZW
     def train_marine(self):
         """Train marines if more are required."""
@@ -337,7 +335,8 @@ class MyAgent(ScaiBackbone):
                                                            unit_type, 5):
             return location
         else:
-            raise SyntaxError
+            raise Exception
+        return location
 
     def squared_distance_p2d(self, p1: Point2D, p2: Point2D) -> float:
         """Gives the squared distance between two Point2D points"""

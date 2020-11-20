@@ -108,3 +108,39 @@ def get_coords(self):
     for unit in self.get_my_workers():
         text = str(unit.position)
         self.map_tools.draw_text(unit.position, text, Color(255, 255, 255))
+
+
+# ZW
+def remove_this_debug(bot: IDABot):
+    building = UnitType(UNIT_TYPEID.TERRAN_COMMANDCENTER, bot)
+    size_x = building.tile_width
+    size_y = building.tile_height
+    margin = 0
+
+    for y in range(int(bot.map_tools.height / 3)):
+        for x in range(int(bot.map_tools.width / 3)):
+            col = Color.WHITE if bot.building_placer.can_build_here_with_spaces(
+                x,
+                y,
+                building,
+                margin) else Color.RED
+
+            bot.map_tools.draw_circle(Point2D(x, y), 0.5, col)
+
+    if not bot.unit:
+        for unit in bot.get_my_units():
+            bot.unit = unit
+            break
+
+    bot.map_tools.draw_text(bot.unit.position, str(
+        bot.building_placer.can_build_here_with_spaces(
+            int(bot.unit.position.x),
+            int(bot.unit.position.y),
+            building,
+            margin)))
+
+    firstPoint = (bot.unit.position - Point2D(margin + size_x / 2, margin + size_y / 2)).to_i()
+    secondPoint = (bot.unit.position + Point2D(margin + size_x / 2, margin + size_y / 2)).to_i()
+    bot.map_tools.draw_box(firstPoint.to_f(), secondPoint.to_f())
+    bot.map_tools.draw_circle(bot.unit.position.to_i().to_f(), margin + sqrt(size_x ** 2 + size_y ** 2) / 2)
+

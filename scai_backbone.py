@@ -33,12 +33,20 @@ refineries_TYPEIDS = [
     UNIT_TYPEID.AUTOMATEDREFINERY,
     UNIT_TYPEID.INFESTEDREFINERY]
 
+
 # Get the distance to a point from a point
 Point2D.dist = lambda self, other: sqrt((self.x - other.x)**2
                                         + (self.y - other.y)**2)
+# Translate a Point2D to a Point2DI
+Point2D.to_i = lambda self: Point2DI(round(self.x), round(self.y))
+# Translate a Point2DI to a Point2D
+Point2DI.to_f = lambda self: Point2D(self.x, self.y)
 
 
 class ScaiBackbone(IDABot):
+
+    id: int  # The value of owner in it's units that corresponds to this player
+
     def __init__(self):
         IDABot.__init__(self)
         self.id = None
