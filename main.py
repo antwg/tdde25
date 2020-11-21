@@ -26,18 +26,16 @@ class MyAgent(ScaiBackbone):
         ScaiBackbone.on_step(self)
         print_debug(self)
        # self.get_coords()
-        self.build_barrack()
-        self.build_supply_depot()
         self.worker_do()
+        for workplace in workplaces:
+            workplace.on_step(self)
+        self.build_supply_depot()
+        self.build_barrack()
         self.train_scv()
-       # self.build_refinery()
-       # self.gather_gas()
         self.train_marine()
         self.defence()
         self.expansion()
         self.look_for_new_units()
-        for workplace in workplaces:
-            workplace.on_step(self)
 
     def on_new_my_unit(self, unit: Unit):
         """Called each time a new unit is noticed."""
@@ -49,10 +47,23 @@ class MyAgent(ScaiBackbone):
                 troop += unit
 
         elif unit.unit_type.unit_typeid in refineries_TYPEIDS:
-            work = worker_seeks_workplace(unit.position)
+            work = closest_workplace(unit.position)
             if work:
                 work.add_refinery(unit)
                 work.update_workers(self)
+
+        elif unit.unit_type.unit_typeid is UNIT_TYPEID.TERRAN_SUPPLYDEPOT:
+            work = closest_workplace_building(unit.position)
+            print("sup build gone")
+
+            work.update_workers(self)
+        elif unit.unit_type.unit_typeid is UNIT_TYPEID.TERRAN_BARRACKS:
+            work = closest_workplace_building(unit.position)
+            print("barack build gone")
+            work.update_workers(self)
+
+        elif unit.unit_type.unit_typeid is UNIT_TYPEID.TERRAN_COMMANDCENTER:
+            print("should be making a workplace")
 
     remember_these: List[Unit] = []
 
@@ -77,7 +88,7 @@ class MyAgent(ScaiBackbone):
         for unit in get_my_workers(self):
             for workplace in workplaces:
                 if unit.is_idle and not workplace.has_unit(unit):
-                    work = worker_seeks_workplace(unit.position)
+                    work = closest_workplace(unit.position)
                     work += unit
 
     # ZW
@@ -167,12 +178,11 @@ class MyAgent(ScaiBackbone):
         supply_depot = UnitType(UNIT_TYPEID.TERRAN_SUPPLYDEPOT, self)
         location = self.building_placer.get_build_location_near(home_base_2di, supply_depot)
 
-        worker = random.choice(get_my_workers(self))
-
         if (self.current_supply / self.max_supply) >= 0.8\
                 and self.max_supply < 200\
                 and self.minerals >= 100\
                 and not currently_building(self, UNIT_TYPEID.TERRAN_SUPPLYDEPOT):
+            worker = closest_workplace(home_base).get_suitable_builder()
             Unit.build(worker, supply_depot, location)
 
     def build_barrack(self): #AW
@@ -183,12 +193,12 @@ class MyAgent(ScaiBackbone):
         barrack = UnitType(UNIT_TYPEID.TERRAN_BARRACKS, self)
         location = self.building_placer.get_build_location_near(home_base_2di,
                                                                 barrack)
-        worker = get_my_workers(self)[0]
 
         if self.minerals >= barrack.mineral_price\
                 and len(get_my_type_units(self, UNIT_TYPEID.TERRAN_BARRACKS)) <\
                 self.max_number_of_barracks()\
                 and not currently_building(self, UNIT_TYPEID.TERRAN_BARRACKS):
+            worker = closest_workplace(home_base).get_suitable_builder()
             Unit.build(worker, barrack, location)
 
     def max_number_of_barracks(self): #AW
@@ -239,13 +249,16 @@ class MyAgent(ScaiBackbone):
         marines = UNIT_TYPEID.TERRAN_MARINE
         command_center = UNIT_TYPEID.TERRAN_COMMANDCENTER
         command_center_type = UnitType(UNIT_TYPEID.TERRAN_COMMANDCENTER, self)
-        worker = random.choice(get_my_workers(self))
         location = self.base_location_manager.get_next_expansion(PLAYER_SELF).\
             depot_position
+        # if the worker comes from different workplace, needs to be let go and added to
+        # new workplace + make a new miner for old workplace
 
         if len(get_my_type_units(self, marines)) >= 8\
                 and can_afford(self, command_center_type)\
                 and not currently_building(self, command_center):
+            worker = closest_workplace(self.base_location_manager.get_next_expansion(PLAYER_SELF). \
+                                       position).get_suitable_builder()
             Unit.build(worker, command_center_type, location)
 
 

@@ -66,28 +66,26 @@ class Workplace:
             if worker in self.builders and not builder_currently_building(bot, worker):
                 if self.wants_gasers:
                     for refinery, units in self.refineries.items():
-                        if refinery.is_completed and len(units) < 3:
+                        if len(units) < 3:
                             self.builders.remove(worker)
                             self.gasers.append(worker)
                             self.refineries[refinery].append(worker)
                             worker.right_click(refinery)
+
                 elif self.wants_miners:
                     self.builders.remove(worker)
                     self.miners.append(worker)
                     worker.right_click(random.choice(self.target_miners))
                 else:
                     self.others.append(worker)
-                    #do smthing :)
-            elif self.wants_gasers and worker in self.miners and worker not in self.gasers:
+
+            elif self.wants_gasers and worker in self.miners:
                 for refinery, units in self.refineries.items():
-                    if refinery.is_completed and len(units) < 3:
+                    if len(units) < 3:
                         self.miners.remove(worker)
                         self.gasers.append(worker)
                         self.refineries[refinery].append(worker)
                         worker.right_click(refinery)
-            else:
-                self.miners.append(worker)
-                worker.right_click(random.choice(self.target_miners))
 
         # DP
 
@@ -113,8 +111,10 @@ class Workplace:
                 self.miners.remove(unit)
                 self.builders.append(unit)
                 return unit
-        return random.choice(self.miners)
-
+        unit = random.choice(self.miners)
+        self.miners.remove(unit)
+        self.builders.append(unit)
+        return unit
 
     def get_units(self, bot: IDABot):
         """Get all units in troop."""
@@ -184,7 +184,7 @@ def create_workplace(bot: IDABot, location: BaseLocation):
 
 
 # DP, ZW
-def worker_seeks_workplace(pos: Point2D) -> Workplace:
+def closest_workplace(pos: Point2D) -> Workplace:
     """Checks the closest workplace to a position"""
     closest = None
     distance = 0
@@ -192,5 +192,19 @@ def worker_seeks_workplace(pos: Point2D) -> Workplace:
         if not closest or distance > workplace.location.position.dist(pos):
             closest = workplace
             distance = workplace.location.position.dist(pos)
+
+    return closest
+
+
+    # DP
+def closest_workplace_building(pos: Point2DI) -> Workplace:
+    """Checks the closest workplace to a buildings position"""
+    pos2d = Point2D(float(pos.x), float(pos.y))
+    closest = None
+    distance = 0
+    for workplace in workplaces:
+        if not closest or distance > workplace.location.position.dist(pos2d):
+            closest = workplace
+            distance = workplace.location.position.dist(pos2d)
 
     return closest

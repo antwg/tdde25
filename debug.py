@@ -69,7 +69,7 @@ def print_unit_overview(self):
     for assignment, amount in assignment_amount_list.items():
         text = str(assignment) + ":"
         self.map_tools.draw_text_screen(0.01, 0.03 + space, text, Color(255, 255, 255))
-        self.map_tools.draw_text_screen(0.06, 0.03 + space, str(amount), Color(255, 255, 255))
+        self.map_tools.draw_text_screen(0.1, 0.03 + space, str(amount), Color(255, 255, 255))
 
         space *= 2
 
