@@ -4,6 +4,7 @@ import random
 from library import *
 
 from funcs import *
+from armies import *
 
 refinery_TYPEID = [UNIT_TYPEID.TERRAN_REFINERY, UNIT_TYPEID.TERRAN_REFINERYRICH]
 
@@ -42,7 +43,8 @@ class Workplace:
                                         - len(self.gasers)
                                         if not self.under_attack else 0)
 
-    def on_step(self, bot: IDABot,):
+    def on_step(self, bot: IDABot):
+        """"""
         self.build_barrack(bot)
         self.build_supply_depot(bot)
         if len(self.refineries) < 2:
@@ -168,6 +170,24 @@ class Workplace:
             Unit.build(worker, barrack, location)
             print('building barrack')
 
+    def expansion(self, bot: IDABot):  # AW
+        """Builds new command center when needed"""
+        marines = UNIT_TYPEID.TERRAN_MARINE
+        command_center = UNIT_TYPEID.TERRAN_COMMANDCENTER
+        command_center_type = UnitType(UNIT_TYPEID.TERRAN_COMMANDCENTER, bot)
+        location = bot.base_location_manager.get_next_expansion(PLAYER_SELF).\
+            depot_position
+
+        if len(get_my_type_units(bot, marines)) >= \
+                len(bot.base_location_manager.get_occupied_base_locations
+                    (PLAYER_SELF)) * 8\
+                and can_afford(bot, command_center_type)\
+                and not bot.currently_building(command_center):
+
+            worker = self.get_suitable_builder()
+            Unit.build(worker, command_center_type, location)
+            create_troop(bot.choke_points(len(bot.base_location_manager.
+                                               get_occupied_base_locations(PLAYER_SELF))))
 
     def __iadd__(self, units: Union[Unit, Sequence[Unit]]):
         """Adds unit to workplace. Note: It's called via workplace += unit."""
@@ -175,8 +195,12 @@ class Workplace:
             units = [units]
 
         for unit in units:
-            print("hej!", unit)
-            if unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_SCV:
+            if unit in self.builders:
+                self.builders.remove(unit)
+                self.miners.append(unit)
+                unit.right_click(random.choice(self.target_miners))
+
+            elif unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_SCV:
                 self.workers.append(unit)
 
                 if self.wants_gasers:

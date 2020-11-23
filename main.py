@@ -26,6 +26,7 @@ class MyAgent(ScaiBackbone):
         """Called each cycle, passed from IDABot.on_step()."""
         ScaiBackbone.on_step(self)
         self.look_for_new_units()
+        print_debug(self)
        # self.get_coords()
         self.worker_do()
         for workplace in workplaces:
@@ -34,7 +35,6 @@ class MyAgent(ScaiBackbone):
         self.train_marine()
         self.defence()
         self.expansion()
-        print_debug(self)
 
     def side(self):
         """Return what side player spawns on"""
@@ -59,7 +59,7 @@ class MyAgent(ScaiBackbone):
         """Called each time a new unit is noticed."""
         if unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_SUPPLYDEPOT:
             unit.ability(ABILITY_ID.MORPH_SUPPLYDEPOT_LOWER)
-            work = closest_workplace_building(unit.position)
+            work = closest_workplace(unit.position)
             print("sup build gone")
             work.update_workers(self)
 
@@ -78,15 +78,17 @@ class MyAgent(ScaiBackbone):
             work = closest_workplace(unit.position)
             if work:
                 work.add_refinery(unit)
+                print("ref built")
                 work.update_workers(self)
 
         elif unit.unit_type.unit_typeid is UNIT_TYPEID.TERRAN_BARRACKS:
-            work = closest_workplace_building(unit.position)
+            work = closest_workplace(unit.position)
             print("barack build gone")
             work.update_workers(self)
 
         elif unit.unit_type.unit_typeid is UNIT_TYPEID.TERRAN_COMMANDCENTER:
             print("should be making a workplace")
+
 
 
     remember_these: List[Unit] = []
@@ -96,7 +98,7 @@ class MyAgent(ScaiBackbone):
         temp_remember_these = self.remember_these.copy()
         for unit in self.get_all_units():
             if unit not in temp_remember_these:
-                if unit.is_completed and unit.is_alive and unit.is_valid:
+                if unit.is_completed and unit.is_alive:
                     self.remember_these.append(unit)
                     if unit.owner == self.id:
                         self.on_new_my_unit(unit)
@@ -279,32 +281,6 @@ class MyAgent(ScaiBackbone):
             return right[base_nr]
         else:
             raise IndexError('Choke point list out of range')
-
-    def expansion(self):  # AW
-        """Builds new command center when needed"""
-        marines = UNIT_TYPEID.TERRAN_MARINE
-        command_center = UNIT_TYPEID.TERRAN_COMMANDCENTER
-        command_center_type = UnitType(UNIT_TYPEID.TERRAN_COMMANDCENTER, self)
-        location = self.base_location_manager.get_next_expansion(PLAYER_SELF).\
-            depot_position
-
-
-        worker = self.nearest_worker(location)
-
-        if len(get_my_type_units(self, marines)) >= \
-                len(self.base_location_manager.get_occupied_base_locations
-                    (PLAYER_SELF)) * 8\
-                and can_afford(self, command_center_type)\
-                and not self.currently_building(command_center):
-
-
-            worker = closest_workplace(self.base_location_manager.get_next_expansion(PLAYER_SELF). \
-                                       position).get_suitable_builder()
-
-
-            Unit.build(worker, command_center_type, location)
-            create_troop(self.choke_points(len(self.base_location_manager.
-                                               get_occupied_base_locations(PLAYER_SELF))))
 
 if __name__ == "__main__":
     MyAgent.bootstrap()
