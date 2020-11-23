@@ -294,18 +294,17 @@ class MyAgent(ScaiBackbone):
 
     def defence(self):  # AW
         """Moves troops to a nearby choke point"""
-        bases = len(self.base_location_manager.get_occupied_base_locations
-                    (PLAYER_SELF)) - 1
-        target_coords = (troops[bases].target.x, troops[bases].target.y)
-        choke_coords = (self.choke_points(bases).x, self.choke_points(bases).y)
-
-        if target_coords != choke_coords:
-            troops[0].move_units(self.choke_points(bases))
+        for i, troop in enumerate(troops):
+            if (troop.target.x, troop.target.y) != \
+                    (self.choke_points(i).x, self.choke_points(i).y):
+                troop.move_units(self.choke_points(i))
 
     def choke_points(self, base_nr):
         """Returns the appropriate choke point"""
-        left = [Point2D(33, 120), Point2D(37, 110), Point2D(37, 110)]
-        right = [Point2D(119, 47), Point2D(114, 58), Point2D(114, 58)]
+        left = [Point2D(33, 120), Point2D(37, 110), Point2D(67, 117),
+                Point2D(65, 86), Point2D(37, 110)]
+        right = [Point2D(119, 47), Point2D(114, 58), Point2D(85, 50),
+                 Point2D(60, 62), Point2D(98, 89), Point2D(41, 33)]
 
         if self.side() == 'left':
             return left[base_nr]
