@@ -164,7 +164,6 @@ def currently_building(bot: IDABot, unit_type): #AW
 
 def builder_currently_building(bot: IDABot, builder):
     """return true if builder is building, false otherwise."""
-    value = 0
     for buildingID in terran_buildings_ids:
         if builder.is_constructing(UnitType(buildingID, bot)):
             return True

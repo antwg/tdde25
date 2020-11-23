@@ -42,6 +42,8 @@ class Workplace:
                                         if not self.under_attack else 0)
 
     def on_step(self, bot: IDABot,):
+        self.build_barrack(bot)
+        self.build_supply_depot(bot)
         if len(self.refineries) < 2:
             self.build_refinery(bot)
 
@@ -101,8 +103,6 @@ class Workplace:
                 worker = self.get_suitable_builder()
                 worker.build_target(refinery, geyser)
 
-
-
     # DP
     def get_suitable_builder(self):
         """returns a suitable miner (worker)"""
@@ -128,7 +128,6 @@ class Workplace:
         else:
             return False
 
-
     def is_worker_collecting_gas(self, bot: IDABot, worker):
         """ Returns: True if a Unit `worker` is collecting gas, False otherwise """
 
@@ -141,6 +140,33 @@ class Workplace:
             if refinery.is_completed and squared_distance(worker, refinery) < 2 ** 2:
                 return True
 
+    def build_supply_depot(self, bot: IDABot):  # AW
+        """Builds a supply depot when necessary."""
+        supply_depot = UnitType(UNIT_TYPEID.TERRAN_SUPPLYDEPOT, bot)
+        location = bot.building_location_finder(supply_depot)
+
+        if (bot.current_supply / bot.max_supply) >= 0.8\
+                and bot.max_supply < 200\
+                and bot.minerals >= 100\
+                and not currently_building(bot, UNIT_TYPEID.TERRAN_SUPPLYDEPOT):
+            worker = self.get_suitable_builder()
+            Unit.build(worker, supply_depot, location)
+
+    def build_barrack(self, bot: IDABot):  # AW
+        """Builds a barrack when necessary."""
+        barrack = UnitType(UNIT_TYPEID.TERRAN_BARRACKS, bot)
+        location = bot.building_location_finder(barrack)
+
+        if bot.minerals >= barrack.mineral_price\
+                and len(get_my_type_units(bot, UNIT_TYPEID.TERRAN_BARRACKS)) <\
+                bot.max_number_of_barracks()\
+                and not bot.currently_building(UNIT_TYPEID.TERRAN_BARRACKS):
+            print(bot.currently_building(UNIT_TYPEID.TERRAN_BARRACKS))
+
+            worker = self.get_suitable_builder()
+
+            Unit.build(worker, barrack, location)
+            print('building barrack')
 
     def __iadd__(self, units: Union[Unit, Sequence[Unit]]):
         """Adds unit to workplace. Note: It's called via workplace += unit."""

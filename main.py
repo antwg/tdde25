@@ -26,18 +26,15 @@ class MyAgent(ScaiBackbone):
         """Called each cycle, passed from IDABot.on_step()."""
         ScaiBackbone.on_step(self)
         self.look_for_new_units()
-        self.build_barrack()
-        print_debug(self)
        # self.get_coords()
         self.worker_do()
         for workplace in workplaces:
             workplace.on_step(self)
-        self.build_supply_depot()
-        self.build_barrack()
         self.train_scv()
         self.train_marine()
         self.defence()
         self.expansion()
+        print_debug(self)
 
     def side(self):
         """Return what side player spawns on"""
@@ -245,36 +242,6 @@ class MyAgent(ScaiBackbone):
             unit_tuple = (distance, unit)
             unit_list.append(unit_tuple)
         return sorted(unit_list, key=lambda tup: tup[0])[0][1]
-
-    def build_supply_depot(self):  # AW
-        """Builds a supply depot when necessary."""
-        supply_depot = UnitType(UNIT_TYPEID.TERRAN_SUPPLYDEPOT, self)
-        location = self.building_location_finder(supply_depot)
-
-        if (self.current_supply / self.max_supply) >= 0.8\
-                and self.max_supply < 200\
-                and self.minerals >= 100\
-                and not currently_building(self, UNIT_TYPEID.TERRAN_SUPPLYDEPOT):
-            # worker = closest_workplace(home_base).get_suitable_builder()
-            worker = random.choice(get_my_workers(self))
-            Unit.build(worker, supply_depot, location)
-
-    def build_barrack(self):  # AW
-        """Builds a barrack when necessary."""
-        barrack = UnitType(UNIT_TYPEID.TERRAN_BARRACKS, self)
-        location = self.building_location_finder(barrack)
-
-        if self.minerals >= barrack.mineral_price\
-                and len(get_my_type_units(self, UNIT_TYPEID.TERRAN_BARRACKS)) <\
-                self.max_number_of_barracks()\
-                and not self.currently_building(UNIT_TYPEID.TERRAN_BARRACKS):
-            print(self.currently_building(UNIT_TYPEID.TERRAN_BARRACKS))
-
-            # worker = closest_workplace(home_base).get_suitable_builder()
-            worker = random.choice(get_my_workers(self))
-
-            Unit.build(worker, barrack, location)
-            print('building barrack')
 
     def max_number_of_barracks(self):  # AW
         """Determines the suitable number of barracks"""
