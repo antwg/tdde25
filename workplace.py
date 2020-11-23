@@ -14,19 +14,19 @@ class Workplace:
     """handles jobs for workers"""
     location: BaseLocation
     target_miners: List[Unit]  # Target for minders
-    target_gasers: List[Unit]  # Target for gasers
-    target_builders: Point2DI  # Target for builders
 
     workers: List[Unit]  # All workers in this workplace
     miners: List[Unit]  # All miners in this workplace
     gasers: List[Unit]  # All gas collectors in this workplace
     builders: List[Unit]  # All builders in this workplace
     refineries: Dict[Unit, List[Unit]]  #
+    barracks: List[Unit]
 
     others: List[int]  # All other units in this workplace
 
     miners_capacity = property(lambda self: 2 * len(self.target_miners))  # How many miners this workplace is asking for
     gasers_capacity = property(lambda self: 3 * len(self.target_gasers))  # How many gasers this workplace is asking for
+    max_number_of_barracks: int = 2
 
     under_attack: bool  # If workplace is under attack or not
 
@@ -49,6 +49,7 @@ class Workplace:
         self.build_supply_depot(bot)
         if len(self.refineries) < 2:
             self.build_refinery(bot)
+        self.expansion(bot)
 
     def __init__(self, position: BaseLocation, bot: IDABot):
         """
@@ -61,8 +62,9 @@ class Workplace:
         self.refineries = {}
         self.others = []
         self.under_attack = False
+        self.barracks = []
 
-        self.target_miners = get_mineral_fields(bot, position)
+        self.target_miners = get_mineral_fields(bot, self.location)
         self.target_gasers = []
 
     # DP
@@ -145,30 +147,43 @@ class Workplace:
     def build_supply_depot(self, bot: IDABot):  # AW
         """Builds a supply depot when necessary."""
         supply_depot = UnitType(UNIT_TYPEID.TERRAN_SUPPLYDEPOT, bot)
-        location = bot.building_location_finder(supply_depot)
 
         if (bot.current_supply / bot.max_supply) >= 0.8\
                 and bot.max_supply < 200\
                 and bot.minerals >= 100\
                 and not currently_building(bot, UNIT_TYPEID.TERRAN_SUPPLYDEPOT):
+            location = self.building_location_finder(bot, supply_depot)
             worker = self.get_suitable_builder()
             Unit.build(worker, supply_depot, location)
 
     def build_barrack(self, bot: IDABot):  # AW
         """Builds a barrack when necessary."""
         barrack = UnitType(UNIT_TYPEID.TERRAN_BARRACKS, bot)
-        location = bot.building_location_finder(barrack)
 
         if bot.minerals >= barrack.mineral_price\
                 and len(get_my_type_units(bot, UNIT_TYPEID.TERRAN_BARRACKS)) <\
-                bot.max_number_of_barracks()\
-                and not bot.currently_building(UNIT_TYPEID.TERRAN_BARRACKS):
-            print(bot.currently_building(UNIT_TYPEID.TERRAN_BARRACKS))
-
+                self.max_number_of_barracks\
+                and not currently_building(bot, UNIT_TYPEID.TERRAN_BARRACKS):
+            print(currently_building(bot, UNIT_TYPEID.TERRAN_BARRACKS))
+            location = self.building_location_finder(bot, barrack)
             worker = self.get_suitable_builder()
 
             Unit.build(worker, barrack, location)
             print('building barrack')
+
+    def building_location_finder(self, bot: IDABot, unit_type):
+        """Finds a suitable location to build a unit of given type"""
+        home_base = self.location.position
+        home_base_2di = Point2DI(int(home_base.x), int(home_base.y))
+        location = bot.building_placer.get_build_location_near(home_base_2di,
+                                                               unit_type)
+        if bot.building_placer.can_build_here_with_spaces(location.x, location.y,
+                                                          unit_type, 5):
+            return location
+        else:
+            raise Exception
+        return location
+
 
     def expansion(self, bot: IDABot):  # AW
         """Builds new command center when needed"""
@@ -182,12 +197,13 @@ class Workplace:
                 len(bot.base_location_manager.get_occupied_base_locations
                     (PLAYER_SELF)) * 8\
                 and can_afford(bot, command_center_type)\
-                and not bot.currently_building(command_center):
+                and not currently_building(bot, command_center):
 
             worker = self.get_suitable_builder()
             Unit.build(worker, command_center_type, location)
             create_troop(bot.choke_points(len(bot.base_location_manager.
                                                get_occupied_base_locations(PLAYER_SELF))))
+
 
     def __iadd__(self, units: Union[Unit, Sequence[Unit]]):
         """Adds unit to workplace. Note: It's called via workplace += unit."""
@@ -222,6 +238,9 @@ class Workplace:
     def add_refinery(self, refinery):
         self.refineries[refinery] = []
         self.target_gasers.append(refinery)
+
+    def add_barracks(self, barrack):
+        self.barracks.append(barrack)
 
 
 # All workplaces!

@@ -34,7 +34,6 @@ class MyAgent(ScaiBackbone):
         self.train_scv()
         self.train_marine()
         self.defence()
-        self.expansion()
 
     def side(self):
         """Return what side player spawns on"""
@@ -83,12 +82,12 @@ class MyAgent(ScaiBackbone):
 
         elif unit.unit_type.unit_typeid is UNIT_TYPEID.TERRAN_BARRACKS:
             work = closest_workplace(unit.position)
-            print("barack build gone")
+            work.add_barracks(unit)
             work.update_workers(self)
 
         elif unit.unit_type.unit_typeid is UNIT_TYPEID.TERRAN_COMMANDCENTER:
             print("should be making a workplace")
-
+            create_workplace(self.base_location_manager.get_next_expansion(PLAYER_SELF), self)
 
 
     remember_these: List[Unit] = []
@@ -183,11 +182,6 @@ class MyAgent(ScaiBackbone):
                         cc.train(scv_type)
 
 
-    def currently_building(self, unit_type): #AW
-        """"Checks if a unit is currently being built"""
-        return any([unit.build_percentage < 1 for unit in
-                    get_my_type_units(self, unit_type)])
-
 
     # ZW
     def train_marine(self):
@@ -214,20 +208,6 @@ class MyAgent(ScaiBackbone):
 
             not_promised_marine -= troop.wants_marines
 
-    def building_location_finder(self, unit_type):
-        """Finds a suitable location to build a unit of given type"""
-        home_base = self.base_location_manager.\
-            get_player_starting_base_location(PLAYER_SELF).position
-        home_base_2di = Point2DI(int(home_base.x), int(home_base.y))
-        location = self.building_placer.get_build_location_near(home_base_2di,
-                                                                unit_type)
-        if self.building_placer.can_build_here_with_spaces(location.x, location.y,
-                                                           unit_type, 5):
-            return location
-        else:
-            raise Exception
-        return location
-
     def squared_distance_p2d(self, p1: Point2D, p2: Point2D) -> float:
         """Gives the squared distance between two Point2D points"""
         return (p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2
@@ -244,11 +224,6 @@ class MyAgent(ScaiBackbone):
             unit_tuple = (distance, unit)
             unit_list.append(unit_tuple)
         return sorted(unit_list, key=lambda tup: tup[0])[0][1]
-
-    def max_number_of_barracks(self):  # AW
-        """Determines the suitable number of barracks"""
-        return len(self.base_location_manager.get_occupied_base_locations
-                   (PLAYER_SELF))
 
     def squared_distance(self, p1, p2): #AW
         """Calculates the squared distance between 2 points"""

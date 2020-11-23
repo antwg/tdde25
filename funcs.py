@@ -168,3 +168,8 @@ def builder_currently_building(bot: IDABot, builder):
         if builder.is_constructing(UnitType(buildingID, bot)):
             return True
     return False
+
+def currently_building(bot:IDABot, unit_type): #AW
+    """"Checks if a unit is currently being built"""
+    return any([unit.build_percentage < 1 for unit in
+                get_my_type_units(bot, unit_type)])
