@@ -12,3 +12,5 @@ def get_closest_unit(units: Iterator[Unit], position: Point2D):
             distance = unit.position.dist(position)
             closest = unit
     return closest
+
+# hello this is a test ;)))
