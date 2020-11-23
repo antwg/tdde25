@@ -194,16 +194,17 @@ class Workplace:
             depot_position
 
         if len(get_my_type_units(bot, marines)) >= \
-                len(bot.base_location_manager.get_occupied_base_locations
-                    (PLAYER_SELF)) * 8\
+                len(workplaces) * 8\
                 and can_afford(bot, command_center_type)\
-                and not currently_building(bot, command_center):
+                and not currently_building(bot, command_center)\
+                and self.get_units(bot):
 
             worker = self.get_suitable_builder()
             Unit.build(worker, command_center_type, location)
             create_troop(bot.choke_points(len(bot.base_location_manager.
                                                get_occupied_base_locations(PLAYER_SELF))))
 
+            create_workplace(bot.base_location_manager.get_next_expansion(PLAYER_SELF), bot)
 
     def __iadd__(self, units: Union[Unit, Sequence[Unit]]):
         """Adds unit to workplace. Note: It's called via workplace += unit."""

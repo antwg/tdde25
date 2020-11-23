@@ -87,7 +87,6 @@ class MyAgent(ScaiBackbone):
 
         elif unit.unit_type.unit_typeid is UNIT_TYPEID.TERRAN_COMMANDCENTER:
             print("should be making a workplace")
-            create_workplace(self.base_location_manager.get_next_expansion(PLAYER_SELF), self)
 
 
     remember_these: List[Unit] = []
@@ -97,7 +96,7 @@ class MyAgent(ScaiBackbone):
         temp_remember_these = self.remember_these.copy()
         for unit in self.get_all_units():
             if unit not in temp_remember_these:
-                if unit.is_completed and unit.is_alive:
+                if unit.is_completed and unit.is_alive and unit.is_valid:
                     self.remember_these.append(unit)
                     if unit.owner == self.id:
                         self.on_new_my_unit(unit)
@@ -124,6 +123,7 @@ class MyAgent(ScaiBackbone):
                 in grounded_command_centers_TYPEIDS)
 
     def worker_do(self):
+        """Assigns starting workers/ idle workers to a jobs to closest workplace"""
         for unit in get_my_workers(self):
             for workplace in workplaces:
                 if unit.is_idle and not workplace.has_unit(unit):
