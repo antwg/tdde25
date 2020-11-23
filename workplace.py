@@ -7,6 +7,7 @@ from funcs import *
 
 refinery_TYPEID = [UNIT_TYPEID.TERRAN_REFINERY, UNIT_TYPEID.TERRAN_REFINERYRICH]
 
+
 # DP
 class Workplace:
     """handles jobs for workers"""
@@ -87,8 +88,7 @@ class Workplace:
                         self.refineries[refinery].append(worker)
                         worker.right_click(refinery)
 
-        # DP
-
+    # DP
     def build_refinery(self, bot: IDABot):
         """Builds a refinery at base location, then calls for collection"""
         refinery = UnitType(UNIT_TYPEID.TERRAN_REFINERY, bot)
@@ -100,8 +100,6 @@ class Workplace:
                     can_afford(bot, refinery):
                 worker = self.get_suitable_builder()
                 worker.build_target(refinery, geyser)
-
-
 
     # DP
     def get_suitable_builder(self):
@@ -128,7 +126,6 @@ class Workplace:
         else:
             return False
 
-
     def is_worker_collecting_gas(self, bot: IDABot, worker):
         """ Returns: True if a Unit `worker` is collecting gas, False otherwise """
 
@@ -140,7 +137,6 @@ class Workplace:
         for refinery in get_my_refineries(bot):
             if refinery.is_completed and squared_distance(worker, refinery) < 2 ** 2:
                 return True
-
 
     def __iadd__(self, units: Union[Unit, Sequence[Unit]]):
         """Adds unit to workplace. Note: It's called via workplace += unit."""
@@ -168,10 +164,10 @@ class Workplace:
             else:
                 self.others.append(unit)
 
-
     def add_refinery(self, refinery):
         self.refineries[refinery] = []
         self.target_gasers.append(refinery)
+
 
 # All workplaces!
 workplaces = []
@@ -196,7 +192,7 @@ def closest_workplace(pos: Point2D) -> Workplace:
     return closest
 
 
-    # DP
+# DP
 def closest_workplace_building(pos: Point2DI) -> Workplace:
     """Checks the closest workplace to a buildings position"""
     pos2d = Point2D(float(pos.x), float(pos.y))

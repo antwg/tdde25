@@ -37,6 +37,9 @@ refineries_TYPEIDS = [
 # Get the distance to a point from a point
 Point2D.dist = lambda self, other: sqrt((self.x - other.x)**2
                                         + (self.y - other.y)**2)
+# Get the distance to a point from a point
+Point2D.squared_dist = lambda self, other: (self.x - other.x)**2 \
+                                           + (self.y - other.y)**2
 # Translate a Point2D to a Point2DI
 Point2D.to_i = lambda self: Point2DI(round(self.x), round(self.y))
 # Translate a Point2DI to a Point2D
