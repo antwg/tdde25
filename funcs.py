@@ -172,4 +172,3 @@ def builder_currently_building(bot: IDABot, builder):
         return True
     else:
         return False
-    
