@@ -60,7 +60,6 @@ class MyAgent(ScaiBackbone):
         elif unit.unit_type.unit_typeid is UNIT_TYPEID.TERRAN_BARRACKS:
             work = closest_workplace_building(unit.position)
             print("barack build gone")
-            work.update_workers(self)
 
         elif unit.unit_type.unit_typeid is UNIT_TYPEID.TERRAN_COMMANDCENTER:
             print("should be making a workplace")
