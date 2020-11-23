@@ -21,18 +21,6 @@ class Troop:
 
     under_attack: bool  # If troop is under attack or not
 
-    has_enough = property(lambda self: len(self.marines)
-                                       >= self.marines_capacity
-                                       and len(self.tanks)
-                                       >= self.tanks_capacity)
-
-    wants_marines = property(lambda self: self.marines_capacity
-                                          - len(self.marines)
-                                          if not self.under_attack else 0)
-    wants_tanks = property(lambda self: self.tanks_capacity
-                                        - len(self.tanks)
-                                        if not self.under_attack else 0)
-
     def __init__(self, position: Point2D):
         """Called when a new troop is being created. Note that no units are
         required for making a troop, rather it is when units are made.
@@ -77,6 +65,24 @@ class Troop:
                 self.others.append(unit)
                 unit.move(self.target)
 
+    @property
+    def has_enough(self):
+        """Check if the capacity is satisfied for all unit types."""
+        return len(self.marines) >= self.marines_capacity \
+               and len(self.tanks) >= self.tanks_capacity
+
+    @property
+    def wants_marines(self):
+        """Return required amount of marines to satisfy capacity."""
+        return self.marines_capacity - len(self.marines) \
+            if not self.under_attack else 0
+
+    @property
+    def wants_tanks(self):
+        """Return required amount of tanks to satisfy capacity."""
+        return self.tanks_capacity - len(self.tanks) \
+            if not self.under_attack else 0
+
 
 # All troops!
 troops = []
@@ -84,12 +90,13 @@ troops = []
 
 # ZW
 def create_troop(point: Point2D):
-    """Create"""
+    """Create a new troop with given target."""
     troops.append(Troop(point))
 
 
 # ZW
 def marine_seeks_troop(position: Point2D) -> Troop:
+    """Find closest troop requiring a marine most."""
     closest = None
     distance = 0
     for troop in troops:
@@ -101,6 +108,7 @@ def marine_seeks_troop(position: Point2D) -> Troop:
 
 # ZW
 def tank_seeks_troop(position: Point2D) -> Troop:
+    """Find closest troop requiring a tank most."""
     closest = None
     distance = 0
     for troop in troops:
