@@ -1,4 +1,4 @@
-from typing import List, Union, Sequence, Dict
+from typing import Union, Sequence, Dict
 import random
 
 from library import *
@@ -21,19 +21,25 @@ class Workplace:
     builders: List[Unit]  # All builders in this workplace
     refineries: Dict[Unit, List[Unit]]  #
     barracks: List[Unit]
+    others: List[Unit]  # All other units in this workplace
 
-    others: List[int]  # All other units in this workplace
+    scv_capacity = property(lambda self: self.miners_capacity
+                                         + self.gasers_capacity)
 
-    miners_capacity = property(lambda self: 2 * len(self.target_miners))  # How many miners this workplace is asking for
-    gasers_capacity = property(lambda self: 3 * len(self.target_gasers))  # How many gasers this workplace is asking for
+    miners_capacity = property(lambda self: 2 * len(self.miners_targets))  # How many miners this workplace is asking for
+    gasers_capacity = property(lambda self: 3 * len(self.refineries))  # How many gasers this workplace is asking for
     max_number_of_barracks: int = 2
 
     under_attack: bool  # If workplace is under attack or not
+    miners_targets: List[Unit]
+    builders_targets: Dict[Unit, tuple]  # Tuple is (what: UnitType, where: Point2D)
 
     has_enough = property(lambda self: len(self.miners)
                                        >= self.miners_capacity
                                        and len(self.gasers)
                                        >= self.gasers_capacity)
+
+    wants_scvs = property(lambda self: self.wants_gasers + self.wants_miners)
 
     wants_miners = property(lambda self: self.miners_capacity
                                          - len(self.miners)
@@ -51,98 +57,102 @@ class Workplace:
             self.build_refinery(bot)
         self.expansion(bot)
 
-    def __init__(self, position: BaseLocation, bot: IDABot):
+    def __init__(self, location: BaseLocation, bot: IDABot):
         """
         """
-        self.location = position
+        self.location = location
         self.workers = []
         self.miners = []
+        self.miners_targets = get_mineral_fields(bot, location)
         self.gasers = []
         self.builders = []
+        self.builders_targets = {}
         self.refineries = {}
         self.others = []
         self.under_attack = False
         self.barracks = []
 
-        self.target_miners = get_mineral_fields(bot, self.location)
-        self.target_gasers = []
+    # ZW
+    def add_miner(self, worker: Unit):
+        self.miners.append(worker)
+        worker.right_click(
+            random.choice(self.miners_targets))
+
+    # ZW
+    def remove_miner(self, worker: Unit):
+        self.miners.remove(worker)
+
+    # ZW
+    def add_gaser(self, worker: Unit, refinery: Unit):
+        self.gasers.append(worker)
+        self.refineries[refinery].append(worker)
+        worker.right_click(refinery)
+
+    # ZW
+    def remove_gaser(self, worker: Unit):
+        self.gasers.remove(worker)
+        for refinery, gasers in self.refineries.items():
+            if worker in gasers:
+                self.refineries[refinery].remove(worker)
+
+    # ZW
+    def add_builder(self, worker: Unit):
+        self.builders.append(worker)
+
+    # ZW
+    def remove_builder(self, worker: Unit):
+        self.builders.remove(worker)
+        if worker in self.builders_targets:
+            del self.builders_targets[worker]
+
+    # ZW
+    def free_worker(self, worker: Unit):
+        if worker in self.miners:
+            self.remove_miner(worker)
+        elif worker in self.gasers:
+            self.remove_gaser(worker)
+        elif worker in self.builders:
+            self.remove_builder(worker)
+
+    # ZW
+    def assign_worker_job(self, worker: Unit):
+        if self.wants_gasers:
+            for refinery, units in self.refineries.items():
+                if len(units) < 3:
+                    self.free_worker(worker)
+                    self.add_gaser(worker, refinery)
+
+        else:
+            self.free_worker(worker)
+            self.add_miner(worker)
 
     # DP
     def update_workers(self, bot: IDABot):
         for worker in self.workers:
-            if worker in self.builders and not builder_currently_building(bot, worker):
-                if self.wants_gasers:
-                    for refinery, units in self.refineries.items():
-                        if len(units) < 3:
-                            self.builders.remove(worker)
-                            self.gasers.append(worker)
-                            self.refineries[refinery].append(worker)
-                            worker.right_click(refinery)
-
-                elif self.wants_miners:
-                    self.builders.remove(worker)
-                    self.miners.append(worker)
-                    worker.right_click(random.choice(self.target_miners))
-                else:
-                    self.others.append(worker)
-
-            elif self.wants_gasers and worker in self.miners:
+            if self.wants_gasers and worker in self.miners:
                 for refinery, units in self.refineries.items():
                     if len(units) < 3:
-                        self.miners.remove(worker)
-                        self.gasers.append(worker)
-                        self.refineries[refinery].append(worker)
-                        worker.right_click(refinery)
-
-    # DP
-    def build_refinery(self, bot: IDABot):
-        """Builds a refinery at base location, then calls for collection"""
-        refinery = UnitType(UNIT_TYPEID.TERRAN_REFINERY, bot)
-        geysers_list = get_my_geysers(bot)
-
-        for geyser in geysers_list:
-            if not currently_building(bot, UNIT_TYPEID.TERRAN_REFINERY) and \
-                    get_refinery(bot, geyser) is None and \
-                    can_afford(bot, refinery):
-                worker = self.get_suitable_builder()
-                worker.build_target(refinery, geyser)
+                        self.remove_miner(worker)
+                        self.add_gaser(worker, refinery)
 
     # DP
     def get_suitable_builder(self):
-        """returns a suitable miner (worker)"""
+        """Returns a suitable miner (worker)"""
         for unit in self.miners:
             if not unit.is_carrying_minerals:
-                self.miners.remove(unit)
-                self.builders.append(unit)
                 return unit
-        unit = random.choice(self.miners)
-        self.miners.remove(unit)
-        self.builders.append(unit)
-        return unit
+        return None
 
-    def get_units(self, bot: IDABot):
+    def get_units(self):
         """Get all units in troop."""
-        return list(filter(lambda unit: self.has_unit(unit),
-                           bot.get_my_units()))
+        return self.workers + self.others
 
     def has_unit(self, unit: Unit) -> bool:
         """Check if workplace has unit."""
-        if unit in self.miners + self.gasers + self.others:
+        if unit in self.get_units():
             return True
         else:
             return False
-
-    def is_worker_collecting_gas(self, bot: IDABot, worker):
-        """ Returns: True if a Unit `worker` is collecting gas, False otherwise """
-
-        def squared_distance(unit_1, unit_2):
-            p1 = unit_1.position
-            p2 = unit_2.position
-            return (p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2
-
-        for refinery in get_my_refineries(bot):
-            if refinery.is_completed and squared_distance(worker, refinery) < 2 ** 2:
-                return True
 
     def build_supply_depot(self, bot: IDABot):  # AW
         """Builds a supply depot when necessary."""
@@ -151,10 +161,10 @@ class Workplace:
         if (bot.current_supply / bot.max_supply) >= 0.8\
                 and bot.max_supply < 200\
                 and bot.minerals >= 100\
-                and not currently_building(bot, UNIT_TYPEID.TERRAN_SUPPLYDEPOT):
-            location = self.building_location_finder(bot, supply_depot)
-            worker = self.get_suitable_builder()
-            Unit.build(worker, supply_depot, location)
+                and not currently_building(bot, UNIT_TYPEID.TERRAN_SUPPLYDEPOT)\
+                and supply_depot not in self.builders_targets.values():
+            location = bot.building_location_finder(supply_depot)
+            self.have_worker_construct(supply_depot, location)
 
     def build_barrack(self, bot: IDABot):  # AW
         """Builds a barrack when necessary."""
@@ -163,13 +173,26 @@ class Workplace:
         if bot.minerals >= barrack.mineral_price\
                 and len(get_my_type_units(bot, UNIT_TYPEID.TERRAN_BARRACKS)) <\
                 self.max_number_of_barracks\
-                and not currently_building(bot, UNIT_TYPEID.TERRAN_BARRACKS):
-            print(currently_building(bot, UNIT_TYPEID.TERRAN_BARRACKS))
-            location = self.building_location_finder(bot, barrack)
-            worker = self.get_suitable_builder()
+                and not currently_building(bot, UNIT_TYPEID.TERRAN_BARRACKS) \
+                and not self.is_building_unittype(barrack):
 
-            Unit.build(worker, barrack, location)
-            print('building barrack')
+            location = bot.building_location_finder(barrack)
+            # print(bot.currently_building(UNIT_TYPEID.TERRAN_BARRACKS))
+
+            self.have_worker_construct(barrack, location)
+            # print('building barrack')
+
+    # DP
+    def build_refinery(self, bot: IDABot):
+        """Builds a refinery at base location, then calls for collection."""
+        refinery = UnitType(UNIT_TYPEID.TERRAN_REFINERY, bot)
+        geysers_list = get_my_geysers(bot)
+        for geyser in geysers_list:
+            if not currently_building(bot, UNIT_TYPEID.TERRAN_REFINERY) and \
+                    get_refinery(bot, geyser) is None and \
+                    can_afford(bot, refinery) \
+                    and not self.is_building_unittype(refinery):
+                self.have_worker_construct(refinery, geyser)
 
     def building_location_finder(self, bot: IDABot, unit_type):
         """Finds a suitable location to build a unit of given type"""
@@ -182,7 +205,6 @@ class Workplace:
             return location
         else:
             raise Exception
-        return location
 
 
     def expansion(self, bot: IDABot):  # AW
@@ -212,33 +234,65 @@ class Workplace:
             units = [units]
 
         for unit in units:
-            if unit in self.builders:
-                self.builders.remove(unit)
-                self.miners.append(unit)
-                unit.right_click(random.choice(self.target_miners))
+            if self.has_unit(unit):
+                continue
 
-            elif unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_SCV:
+            if unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_SCV:
                 self.workers.append(unit)
 
                 if self.wants_gasers:
-
                     for refinery, units in self.refineries.items():
-
                         if refinery.is_completed and len(units) < 3:
-                            self.gasers.append(unit)
-                            self.refineries[refinery].append(unit)
-                            unit.right_click(refinery)
+                            self.add_gaser(unit, refinery)
 
-                elif self.wants_miners:
-                    self.miners.append(unit)
-                    unit.right_click(random.choice(self.target_miners))
+                self.add_miner(unit)
 
             else:
                 self.others.append(unit)
 
     def add_refinery(self, refinery):
         self.refineries[refinery] = []
-        self.target_gasers.append(refinery)
+
+    # ZW
+    def remove_refinery(self, refinery):
+        free_workers = self.refineries[refinery]
+        del self.refineries[refinery]
+        for worker in free_workers:
+            self.assign_worker_job(worker)
+
+    def on_building_completed(self, building: Unit):
+        for builder, target in self.builders_targets.items():
+            if target[1] == building.tile_position \
+                    and target[0] == building.unit_type:
+                self.remove_builder(builder)
+                self.assign_worker_job(builder)
+                break
+
+    # ZW
+    def have_worker_construct(self, building: UnitType, position: Union[Point2DI, Unit]):
+        worker = self.get_suitable_builder()
+
+        if worker:
+            if isinstance(position, Point2DI):
+                worker.build(building, position)
+                target = (building, position)
+            elif isinstance(position, Unit):
+                worker.build_target(building, position)
+                target = (building, position.tile_position)
+            else:
+                print("'I can't build here!' - The building can't be constructed")
+                target = None
+
+            if target:
+                self.free_worker(worker)
+                self.add_builder(worker)
+                self.builders_targets[worker] = target
+
+    def is_building_unittype(self, barrack) -> bool:
+        for target in self.builders_targets.values():
+            if target[0] == barrack:
+                return True
+        return False
 
     def add_barracks(self, barrack):
         self.barracks.append(barrack)
@@ -263,6 +317,21 @@ def closest_workplace(pos: Point2D) -> Workplace:
         if not closest or distance > workplace.location.position.dist(pos):
             closest = workplace
             distance = workplace.location.position.dist(pos)
+
+    return closest
+
+
+# ZW
+def scv_seeks_workplace(pos: Point2D) -> Workplace:
+    """Checks the closest workplace to a position"""
+    closest = None
+    distance = 0
+    for workplace in workplaces:
+        if not closest or distance > workplace.location.position.dist(pos) \
+                * workplace.wants_scvs:
+            closest = workplace
+            distance = workplace.location.position.dist(pos) \
+                       * workplace.wants_scvs
 
     return closest
 

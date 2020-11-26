@@ -18,7 +18,6 @@ class MyAgent(ScaiBackbone):
         """Called on start up, passed from IDABot.on_game_start()."""
         ScaiBackbone.on_game_start(self)
         create_troop(Point2D(35, 123))
-        self.unit = None
         create_workplace(self.base_location_manager \
         .get_player_starting_base_location(PLAYER_SELF), self)
 
@@ -46,20 +45,35 @@ class MyAgent(ScaiBackbone):
         else:
             return 'left'
 
+    def on_lost_my_unit(self, unit: Unit):
+        """Called each time a unit is killed."""
+        # Try removing from troop if in any
+        troop = find_unit_troop(unit)
+        if troop:
+            troop.member_lost(unit)
+
+        # Remove minerals from workplace.miners_targets
+        if unit.unit_type.unit_typeid in minerals_TYPEIDS:
+            for workplace in workplaces:
+                if unit in workplace.miners_targets:
+                    workplace.miners_targets.remove(unit)
+
     def on_new_my_unit(self, unit: Unit):
         """Called each time a new unit is noticed."""
-        print(unit)
+        # print(unit)
         self.train_marine()
         self.defence()
         self.expansion()
         self.look_for_new_units()
 
-    def on_new_my_unit(self, unit: Unit):
-        """Called each time a new unit is noticed."""
+        if unit.unit_type.is_building:
+            for workplace in workplaces:
+                workplace.on_building_completed(unit)
+
         if unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_SUPPLYDEPOT:
             unit.ability(ABILITY_ID.MORPH_SUPPLYDEPOT_LOWER)
             work = closest_workplace(unit.position)
-            print("sup build gone")
+            # print("sup build gone")
             work.update_workers(self)
 
         elif unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_MARINE:
@@ -88,6 +102,10 @@ class MyAgent(ScaiBackbone):
         elif unit.unit_type.unit_typeid is UNIT_TYPEID.TERRAN_COMMANDCENTER:
             print("should be making a workplace")
 
+        elif unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_SCV:
+            workplace = scv_seeks_workplace(unit.position)
+            if workplace:
+                workplace += unit
 
     remember_these: List[Unit] = []
 
@@ -103,11 +121,11 @@ class MyAgent(ScaiBackbone):
             else:
                 temp_remember_these.remove(unit)
                 if not unit.is_completed or not unit.is_alive or not unit.is_valid:
+                    self.on_lost_my_unit(unit)
                     self.remember_these.remove(unit)
         for remembered_unit in temp_remember_these:
             # How to handle not found units?
             pass
-
 
     # ZW
     def is_worker_collecting_minerals(self, worker: Unit):
@@ -134,13 +152,29 @@ class MyAgent(ScaiBackbone):
     def train_scv(self):
         """Builds a SCV if possible on a base if needed."""
         scv_type = UnitType(UNIT_TYPEID.TERRAN_SCV, self)
+        if can_afford(self, scv_type):
+            ccs = get_my_types_units(self, grounded_command_centers_TYPEIDS)
+            ccs = list(filter(lambda cc: cc.is_idle, ccs))
+
+            for workplace in workplaces:
+                if not ccs:
+                    break
+                count_needed = workplace.wants_scvs
+                while count_needed > 0 and ccs:
+                    trainer = get_closest_unit(ccs, workplace.location.position)
+                    trainer.train(scv_type)
+                    count_needed -= 1
+                    ccs.remove(trainer)
+
+    # ZW
+    def train_scv_old(self):
+        """OLD: Builds a SCV if possible on a base if needed."""
+        scv_type = UnitType(UNIT_TYPEID.TERRAN_SCV, self)
 
         if can_afford(self, scv_type):
             base_locations = self.base_location_manager.base_locations
 
             for bl in base_locations:
-
-
                 ccs = list(filter(lambda cc: bl.contains_position(cc.position),
                              get_my_types_units(self,
                                                 grounded_command_centers_TYPEIDS)))
@@ -181,7 +215,11 @@ class MyAgent(ScaiBackbone):
                     if cc.is_idle:
                         cc.train(scv_type)
 
-
+    def currently_building(self, unit_type): #AW
+        """"Checks if a unit is currently being built"""
+        # TODO: Rewrite
+        return any([unit.build_percentage < 1 for unit in
+                    get_my_type_units(self, unit_type)])
 
     # ZW
     def train_marine(self):
@@ -197,7 +235,6 @@ class MyAgent(ScaiBackbone):
         for troop in troops:
             if troop.wants_marines - not_promised_marine > 0\
                     and can_afford(self, marine):
-
 
                 barrack = get_closest_unit(
                     list(filter(lambda b: b.is_idle, barracks)),

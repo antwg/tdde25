@@ -33,6 +33,10 @@ refineries_TYPEIDS = [
     UNIT_TYPEID.AUTOMATEDREFINERY,
     UNIT_TYPEID.INFESTEDREFINERY]
 
+siege_tanks_TYPEIDS = [
+    UNIT_TYPEID.TERRAN_SIEGETANK,
+    UNIT_TYPEID.TERRAN_SIEGETANKSIEGED]
+
 
 # Get the distance to a point from a point
 Point2D.dist = lambda self, other: sqrt((self.x - other.x)**2

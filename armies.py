@@ -1,25 +1,23 @@
-from typing import List, Union, Sequence
+from typing import Union, Sequence
 
 from library import *
 
-siege_tanks_TYPEIDS = [
-    UNIT_TYPEID.TERRAN_SIEGETANK,
-    UNIT_TYPEID.TERRAN_SIEGETANKSIEGED]
+from scai_backbone import siege_tanks_TYPEIDS
 
 
 # ZW
 class Troop:
     """A collection of military units."""
-    target: Point2D  # Common target for all units in troop
+    # target: Point2D - Common target for all units in troop
 
-    marines: List[Unit]  # All marines in this troop
-    tanks: List[Unit]    # All siege tanks in this troop
-    others: List[Unit]   # All other units in this troop
+    # marines: List[Unit] - All marines in this troop
+    # tanks: List[Unit]   - All siege tanks in this troop
+    # others: List[Unit]  - All other units in this troop
 
     marines_capacity: int = 8  # How many marines this troop is asking for
     tanks_capacity: int = 2    # How many tanks this troop is asking for
 
-    under_attack: bool  # If troop is under attack or not
+    # under_attack: bool  - If troop is under attack or not
 
     def __init__(self, position: Point2D):
         """Called when a new troop is being created. Note that no units are
@@ -48,6 +46,14 @@ class Troop:
             return True
         else:
             return False
+
+    def member_lost(self, unit: Unit):
+        if unit in self.marines:
+            self.marines.remove(unit)
+        elif unit in self.tanks:
+            self.tanks.remove(unit)
+        elif unit in self.others:
+            self.others.remove(unit)
 
     def __iadd__(self, units: Union[Unit, Sequence[Unit]]):
         """Adds unit to troop. Note: It's called via troop += unit."""
@@ -116,3 +122,11 @@ def tank_seeks_troop(position: Point2D) -> Troop:
             closest = troop
             distance = troop.target.dist(position)
     return closest
+
+
+# ZW
+def find_unit_troop(unit: Unit) -> Union[Troop, None]:
+    for troop in troops:
+        if troop.has_unit(unit):
+            return troop
+    return None

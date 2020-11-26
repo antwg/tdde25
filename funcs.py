@@ -107,6 +107,7 @@ def get_refineries_base(bot: IDABot, base_location: BaseLocation):
             ref.append(get_refinery(bot, geyser))
     return ref
 
+
 # ZW
 def can_afford(bot: IDABot, unit_type: UnitType) -> bool:
     """Returns whenever a unit is affordable. """
