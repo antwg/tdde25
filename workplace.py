@@ -253,6 +253,8 @@ class Workplace:
             else:
                 self.others.append(unit)
 
+        return self
+
     def __isub__(self, units: Union[Unit, Sequence[Unit]]):
         if isinstance(units, Unit):
             units = [units]
@@ -272,6 +274,8 @@ class Workplace:
 
             if unit in self.others:
                 self.others.remove(unit)
+
+        return self
 
     def add_refinery(self, refinery):
         self.refineries[refinery] = []
