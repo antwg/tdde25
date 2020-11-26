@@ -58,12 +58,16 @@ class MyAgent(ScaiBackbone):
                 if unit in workplace.miners_targets:
                     workplace.miners_targets.remove(unit)
 
+    def on_idle_unit(self, unit: Unit):
+        """Called each time a unit is idle."""
+        if unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_BARRACKS:
+            self.train_marine()
+
     def on_new_my_unit(self, unit: Unit):
         """Called each time a new unit is noticed."""
         # print(unit)
         self.train_marine()
         self.defence()
-        self.expansion()
         self.look_for_new_units()
 
         if unit.unit_type.is_building:
@@ -91,7 +95,7 @@ class MyAgent(ScaiBackbone):
             work = closest_workplace(unit.position)
             if work:
                 work.add_refinery(unit)
-                print("ref built")
+                # print("ref built")
                 work.update_workers(self)
 
         elif unit.unit_type.unit_typeid is UNIT_TYPEID.TERRAN_BARRACKS:
@@ -113,6 +117,10 @@ class MyAgent(ScaiBackbone):
         """Find units that has not been noticed by the bot."""
         temp_remember_these = self.remember_these.copy()
         for unit in self.get_all_units():
+            # If idle call on_idle_unit()
+            if unit.is_idle:
+                self.on_idle_unit(unit)
+
             if unit not in temp_remember_these:
                 if unit.is_completed and unit.is_alive and unit.is_valid:
                     self.remember_these.append(unit)
