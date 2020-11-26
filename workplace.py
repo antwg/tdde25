@@ -228,8 +228,7 @@ class Workplace:
             new_workplace += worker
             new_workplace.have_worker_construct(command_center_type, location)
 
-            create_troop(bot.choke_points(len(bot.base_location_manager.
-                                               get_occupied_base_locations(PLAYER_SELF))))
+            create_troop(bot.choke_points((location.x, location.y)))
 
     def __iadd__(self, units: Union[Unit, Sequence[Unit]]):
         """Adds unit to workplace. Note: It's called via workplace += unit."""

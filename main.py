@@ -17,7 +17,10 @@ class MyAgent(ScaiBackbone):
     def on_game_start(self):
         """Called on start up, passed from IDABot.on_game_start()."""
         ScaiBackbone.on_game_start(self)
-        create_troop(Point2D(35, 123))
+        if self.side() == 'right':
+            create_troop(Point2D(119, 47))
+        else:
+            create_troop(Point2D(33, 120))
         create_workplace(self.base_location_manager \
         .get_player_starting_base_location(PLAYER_SELF), self)
 
@@ -26,13 +29,12 @@ class MyAgent(ScaiBackbone):
         ScaiBackbone.on_step(self)
         self.look_for_new_units()
         print_debug(self)
-       # self.get_coords()
         self.worker_do()
         for workplace in workplaces:
             workplace.on_step(self)
         self.train_scv()
         self.train_marine()
-        self.defence()
+        #self.defence()
 
     def side(self):
         """Return what side player spawns on"""
@@ -67,7 +69,8 @@ class MyAgent(ScaiBackbone):
         """Called each time a new unit is noticed."""
         # print(unit)
         self.train_marine()
-        self.defence()
+        #self.defence()
+        #self.expansion()
         self.look_for_new_units()
 
         if unit.unit_type.is_building:
@@ -281,26 +284,20 @@ class MyAgent(ScaiBackbone):
         else:
             return Point2D(33, 120)
 
-    def defence(self):  # AW
-        """Moves troops to a nearby choke point"""
-        for i, troop in enumerate(troops):
-            if (troop.target.x, troop.target.y) != \
-                    (self.choke_points(i).x, self.choke_points(i).y):
-                troop.move_units(self.choke_points(i))
 
-    def choke_points(self, base_nr):
+    def choke_points(self, coordinates):
         """Returns the appropriate choke point"""
-        left = [Point2D(33, 120), Point2D(37, 110), Point2D(67, 117),
-                Point2D(65, 86), Point2D(37, 110)]
-        right = [Point2D(119, 47), Point2D(114, 58), Point2D(85, 50),
-                 Point2D(60, 62), Point2D(98, 89), Point2D(41, 33)]
+        choke_point_dict = {(59, 28): (52, 35), (125, 137): (127, 128),
+                            (58, 128): (67, 116), (125, 30): (119, 47),
+                            (92, 139): (99, 130), (25, 111): (44, 101),
+                            (26, 81): (30, 67), (86, 114): (93, 102),
+                            (91, 71): (88, 82), (93, 39): (85, 50),
+                            (126, 56): (108, 67), (65, 53): (69, 58),
+                            (125, 86): (121, 100), (26, 30): (23, 39),
+                            (26, 137): (33, 120)}
 
-        if self.side() == 'left':
-            return left[base_nr]
-        elif self.side() == 'right':
-            return right[base_nr]
-        else:
-            raise IndexError('Choke point list out of range')
+        return Point2D(choke_point_dict[coordinates][0],
+                       choke_point_dict[coordinates][1])
 
 if __name__ == "__main__":
     MyAgent.bootstrap()
