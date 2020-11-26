@@ -363,16 +363,3 @@ def scv_seeks_workplace(pos: Point2D) -> Workplace:
 
     return closest
 
-
-# DP
-def closest_workplace_building(pos: Point2DI) -> Workplace:
-    """Checks the closest workplace to a buildings position"""
-    pos2d = Point2D(float(pos.x), float(pos.y))
-    closest = None
-    distance = 0
-    for workplace in workplaces:
-        if not closest or distance > workplace.location.position.dist(pos2d):
-            closest = workplace
-            distance = workplace.location.position.dist(pos2d)
-
-    return closest
