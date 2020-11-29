@@ -34,7 +34,14 @@ class MyAgent(ScaiBackbone):
             workplace.on_step(self)
         self.train_scv()
         self.train_marine()
-        #self.defence()
+        self.expansion()
+        self.get_coords()
+
+    def get_coords(self):
+        """Prints position of all workers"""
+        for unit in self.get_my_units():
+            text = str(unit.position)
+            self.map_tools.draw_text(unit.position, text, Color(255, 255, 255))
 
     def side(self):
         """Return what side player spawns on"""
@@ -69,7 +76,7 @@ class MyAgent(ScaiBackbone):
         """Called each time a new unit is noticed."""
         # print(unit)
         self.train_marine()
-        self.look_for_new_units()
+        # self.look_for_new_units()
 
         if unit.unit_type.is_building:
             for workplace in workplaces:
@@ -226,7 +233,7 @@ class MyAgent(ScaiBackbone):
         """Calculates the squared distance between 2 points"""
         return (p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2
 
-    def choke_points(self, coordinates):
+    def choke_points(self, coordinates) -> Point2D:
         """Returns the appropriate choke point"""
         choke_point_dict = {(59, 28): (52, 35), (125, 137): (127, 128),
                             (58, 128): (67, 116), (125, 30): (119, 47),
@@ -239,6 +246,31 @@ class MyAgent(ScaiBackbone):
 
         return Point2D(choke_point_dict[coordinates][0],
                        choke_point_dict[coordinates][1])
+
+    def expansion(self):  # AW
+        """Builds new command center when needed"""
+        marines = UNIT_TYPEID.TERRAN_MARINE
+        command_center = UNIT_TYPEID.TERRAN_COMMANDCENTER
+        command_center_type = UnitType(UNIT_TYPEID.TERRAN_COMMANDCENTER, self)
+        location = self.base_location_manager.get_next_expansion(PLAYER_SELF).\
+            depot_position
+        workplace = closest_workplace(location)
+        worker = workplace.get_suitable_worker_and_remove()
+
+        if len(get_my_type_units(self, marines)) >= \
+                len(workplaces) * 8\
+                and can_afford(self, command_center_type)\
+                and not currently_building(self, command_center)\
+                and worker:
+
+            new_workplace = create_workplace\
+                (self.base_location_manager.get_next_expansion(PLAYER_SELF),
+                 self)
+
+            new_workplace += worker
+            new_workplace.have_worker_construct(command_center_type, location)
+
+            create_troop(self.choke_points((location.x, location.y)))
 
 if __name__ == "__main__":
     MyAgent.bootstrap()

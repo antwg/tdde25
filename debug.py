@@ -106,7 +106,7 @@ def assignment_amount(self):
 
 def get_coords(self):
     """Prints position of all workers"""
-    for unit in self.get_my_workers():
+    for unit in self.get_my_units():
         text = str(unit.position)
         self.map_tools.draw_text(unit.position, text, Color(255, 255, 255))
 

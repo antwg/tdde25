@@ -68,6 +68,8 @@ class ScaiBackbone(IDABot):
                 self.id = unit.owner
                 print("ID:", self.id)
                 break
+    def expansion(self):
+        pass
 
     @classmethod
     def bootstrap(cls):

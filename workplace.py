@@ -55,7 +55,7 @@ class Workplace:
         self.build_supply_depot(bot)
         if len(self.refineries) < 2:
             self.build_refinery(bot)
-        self.expansion(bot)
+       # self.expansion(bot)
 
     def __init__(self, location: BaseLocation, bot: IDABot):
         """
@@ -80,7 +80,8 @@ class Workplace:
 
     # ZW
     def remove_miner(self, worker: Unit):
-        self.miners.remove(worker)
+        if worker in self.miners:
+            self.miners.remove(worker)
 
     # ZW
     def add_gaser(self, worker: Unit, refinery: Unit):
@@ -142,6 +143,12 @@ class Workplace:
             if not unit.is_carrying_minerals:
                 return unit
         return None
+
+    def get_suitable_worker_and_remove(self):
+        worker = self.get_suitable_builder()
+        if worker:
+            self -= worker
+        return worker
 
     def get_units(self):
         """Get all units in troop."""
@@ -205,30 +212,6 @@ class Workplace:
             return location
         else:
             raise Exception
-
-    def expansion(self, bot: IDABot):  # AW
-        """Builds new command center when needed"""
-        marines = UNIT_TYPEID.TERRAN_MARINE
-        command_center = UNIT_TYPEID.TERRAN_COMMANDCENTER
-        command_center_type = UnitType(UNIT_TYPEID.TERRAN_COMMANDCENTER, bot)
-        location = bot.base_location_manager.get_next_expansion(PLAYER_SELF).\
-            depot_position
-
-        if len(get_my_type_units(bot, marines)) >= \
-                len(workplaces) * 8\
-                and can_afford(bot, command_center_type)\
-                and not currently_building(bot, command_center)\
-                and self.get_units():
-
-            worker = self.get_suitable_builder()
-
-            new_workplace = create_workplace(bot.base_location_manager.get_next_expansion(PLAYER_SELF), bot)
-
-            self -= worker
-            new_workplace += worker
-            new_workplace.have_worker_construct(command_center_type, location)
-
-            create_troop(bot.choke_points((location.x, location.y)))
 
     def __iadd__(self, units: Union[Unit, Sequence[Unit]]):
         """Adds unit to workplace. Note: It's called via workplace += unit."""
