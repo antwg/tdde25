@@ -103,13 +103,19 @@ def create_troop(point: Point2D):
 # ZW
 def marine_seeks_troop(position: Point2D) -> Troop:
     """Find closest troop requiring a marine most."""
-    closest = None
-    distance = 0
+    closest = [None, None]
+    distance = [0, 0]
     for troop in troops:
-        if not closest or troop.target.dist(position) / max(troop.wants_marines, 0.1) < distance:
-            closest = troop
-            distance = troop.target.dist(position)
-    return closest
+        if troop.wants_marines > 0:
+            if not closest[0] or troop.target.dist(position) / troop.wants_marines < distance[0]:
+                closest[0] = troop
+                distance[0] = troop.target.dist(position)
+        else:
+            if not closest[1] or troop.target.dist(position) < distance[1]:
+                closest[1] = troop
+                distance[1] = troop.target.dist(position)
+
+    return closest[0] if closest[0] else closest[1]
 
 
 # ZW

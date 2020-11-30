@@ -80,14 +80,15 @@ def unit_assignment(self):
     assignment = {}
 
     for workplace in workplaces:
+        loyalty = str(workplaces.index(workplace))
         for miner in workplace.miners:
-            assignment[miner] = "miner"
+            assignment[miner] = "miner " + loyalty
         for gaser in workplace.gasers:
-            assignment[gaser] = "gas_gatherer"
+            assignment[gaser] = "gas_gatherer " + loyalty
         for builder in workplace.builders:
-            assignment[builder] = "builder"
+            assignment[builder] = "builder " + loyalty
 
-        return assignment
+    return assignment
 
 
 def assignment_amount(self):

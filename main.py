@@ -26,13 +26,12 @@ class MyAgent(ScaiBackbone):
         ScaiBackbone.on_step(self)
         self.look_for_new_units()
         print_debug(self)
-       # self.get_coords()
-        self.worker_do()
+        # self.get_coords()
         for workplace in workplaces:
             workplace.on_step(self)
         self.train_scv()
-        self.train_marine()
-        self.defence()
+        # self.train_marine()
+        # self.defence()
 
     def side(self):
         """Return what side player spawns on"""
@@ -63,16 +62,21 @@ class MyAgent(ScaiBackbone):
         if unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_BARRACKS:
             self.train_marine()
 
+        if unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_SCV:
+
+            for workplace in workplaces:
+                if workplace.has_unit(unit):
+                    workplace.on_idle_unit(unit, self)
+
     def on_new_my_unit(self, unit: Unit):
         """Called each time a new unit is noticed."""
-        # print(unit)
-        self.train_marine()
-        self.defence()
-        self.look_for_new_units()
+        # print("new unit:", unit)
 
         if unit.unit_type.is_building:
             for workplace in workplaces:
-                workplace.on_building_completed(unit)
+                if workplace.has_build_target(unit):
+                    workplace.on_building_completed(unit)
+                    break
 
         if unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_SUPPLYDEPOT:
             unit.ability(ABILITY_ID.MORPH_SUPPLYDEPOT_LOWER)
@@ -148,14 +152,6 @@ class MyAgent(ScaiBackbone):
                 and worker.target.unit_type.unit_typeid
                 in grounded_command_centers_TYPEIDS)
 
-    def worker_do(self):
-        """Assigns starting workers/ idle workers to a jobs to closest workplace"""
-        for unit in get_my_workers(self):
-            for workplace in workplaces:
-                if unit.is_idle and not workplace.has_unit(unit):
-                    work = closest_workplace(unit.position)
-                    work += unit
-
     # ZW
     def train_scv(self):
         """Builds a SCV if possible on a base if needed."""
@@ -173,55 +169,6 @@ class MyAgent(ScaiBackbone):
                     trainer.train(scv_type)
                     count_needed -= 1
                     ccs.remove(trainer)
-
-    # ZW
-    def train_scv_old(self):
-        """OLD: Builds a SCV if possible on a base if needed."""
-        scv_type = UnitType(UNIT_TYPEID.TERRAN_SCV, self)
-
-        if can_afford(self, scv_type):
-            base_locations = self.base_location_manager.base_locations
-
-            for bl in base_locations:
-                ccs = list(filter(lambda cc: bl.contains_position(cc.position),
-                             get_my_types_units(self,
-                                                grounded_command_centers_TYPEIDS)))
-
-                if not ccs:  # If no grounded command centers were found...
-                    continue  # ...continue on to next base location
-
-                scvs = get_my_workers(self)
-
-                count_gatherers = 0
-                count_caretakers = 0
-                count_promised = 0
-
-                # Count all scvs in base_location and note if their gathering resources
-                for scv in scvs:
-                    if bl.contains_position(scv.position):
-                        # Scv in base location
-                        count_caretakers += 1
-                        if scv.has_target:
-                            if self.is_worker_collecting_minerals(scv):
-                                # Scv is gathering resources
-                                count_gatherers += 1
-                # Count all scvs that are being produced at location
-                for cc in ccs:
-                    if cc.is_constructing(scv_type):
-                        count_promised += 1
-
-                # Required least amount of caretakers
-                refineries = list(filter(lambda ref: ref.gas_left_in_refinery,
-                                  get_my_types_units(self, refineries_TYPEIDS)))
-                need_scvs = 3 * len(refineries) + 2 * len(bl.mineral_fields) + 2
-
-
-                # If more scvs are required, try to produce more at closest cc
-                if ccs and count_caretakers + count_promised < need_scvs:
-                    #    or count_gatherers + count_promised < need_scvs:
-                    cc = get_closest_unit(ccs, bl.position)
-                    if cc.is_idle:
-                        cc.train(scv_type)
 
     def currently_building(self, unit_type): #AW
         """"Checks if a unit is currently being built"""
@@ -301,6 +248,7 @@ class MyAgent(ScaiBackbone):
             return right[base_nr]
         else:
             raise IndexError('Choke point list out of range')
+
 
 if __name__ == "__main__":
     MyAgent.bootstrap()
