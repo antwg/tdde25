@@ -90,7 +90,8 @@ class Workplace:
 
     # ZW
     def remove_miner(self, worker: Unit):
-        self.miners.remove(worker)
+        if worker in self.miners:
+            self.miners.remove(worker)
 
     # ZW
     def add_gaser(self, worker: Unit, refinery: Unit):
@@ -154,6 +155,12 @@ class Workplace:
                 return unit
         return None
 
+    def get_suitable_worker_and_remove(self):
+        worker = self.get_suitable_builder()
+        if worker:
+            self -= worker
+        return worker
+
     def get_units(self):
         """Get all units in troop."""
         return self.workers + self.others
@@ -169,9 +176,9 @@ class Workplace:
         """Builds a supply depot when necessary."""
         supply_depot = UnitType(UNIT_TYPEID.TERRAN_SUPPLYDEPOT, bot)
 
-        if (bot.current_supply / bot.max_supply) >= 0.8\
-                and bot.max_supply < 200\
-                and bot.minerals >= 100\
+        if (bot.current_supply / bot.max_supply) >= 0.8 \
+                and bot.max_supply < 200 \
+                and can_afford(bot, supply_depot) \
                 and not currently_building(bot, UNIT_TYPEID.TERRAN_SUPPLYDEPOT)\
                 and supply_depot not in self.builders_targets.values():
             location = self.building_location_finder(bot, supply_depot)
@@ -237,26 +244,6 @@ class Workplace:
             print("building not built")
             raise Exception
 
-    def expansion(self, bot: IDABot):  # AW
-        """Builds new command center when needed"""
-        marines = UNIT_TYPEID.TERRAN_MARINE
-        command_center = UNIT_TYPEID.TERRAN_COMMANDCENTER
-        command_center_type = UnitType(UNIT_TYPEID.TERRAN_COMMANDCENTER, bot)
-        location = bot.base_location_manager.get_next_expansion(PLAYER_SELF).\
-            depot_position
-
-        if len(get_my_type_units(bot, marines)) >= \
-                len(workplaces) * 8\
-                and can_afford(bot, command_center_type)\
-                and not currently_building(bot, command_center)\
-                and len(self.get_units()) > 13:
-
-            self.have_worker_construct(command_center_type, location)
-            create_troop(bot.choke_points(len(bot.base_location_manager.
-                                               get_occupied_base_locations(PLAYER_SELF))))
-
-            create_workplace(bot.base_location_manager.get_next_expansion(PLAYER_SELF), bot)
-
     def __iadd__(self, units: Union[Unit, Sequence[Unit]]):
         """Adds unit to workplace. Note: It's called via workplace += unit."""
         if isinstance(units, Unit):
@@ -280,6 +267,30 @@ class Workplace:
             else:
                 print("unit has come to the other side")
                 self.others.append(unit)
+
+        return self
+
+    def __isub__(self, units: Union[Unit, Sequence[Unit]]):
+        if isinstance(units, Unit):
+            units = [units]
+
+        for unit in units:
+            if not self.has_unit(unit):
+                continue
+
+            if unit in self.builders:
+                self.remove_builder(unit)
+
+            if unit in self.miners:
+                self.remove_miner(unit)
+
+            if unit in self.gasers:
+                self.remove_gaser(unit)
+
+            if unit in self.others:
+                self.others.remove(unit)
+
+        return self
 
     def add_refinery(self, refinery):
         self.refineries[refinery] = []
@@ -351,9 +362,11 @@ def remove_scout(scout: Unit) -> None:
 
 
 # DP
-def create_workplace(bot: IDABot, location: BaseLocation):
+def create_workplace(bot: IDABot, location: BaseLocation) -> Workplace:
     """Create"""
-    workplaces.append(Workplace(bot, location))
+    workplace = Workplace(bot, location)
+    workplaces.append(workplace)
+    return workplace
 
 
 # DP, ZW
@@ -376,8 +389,10 @@ def scv_seeks_workplace(pos: Point2D) -> Workplace:
     distance = 0
     for workplace in workplaces:
         if not closest or distance > workplace.location.position.dist(pos) \
-                / max(workplace.wants_scvs, 1) and workplace.wants_scvs > 0:
+                / max(workplace.wants_scvs, 1):
             closest = workplace
-            distance = workplace.location.position.dist(pos)/ max(workplace.wants_scvs, 1)
+            distance = workplace.location.position.dist(pos) \
+                       / max(workplace.wants_scvs, 1)
 
     return closest
+

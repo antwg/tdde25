@@ -17,7 +17,10 @@ class MyAgent(ScaiBackbone):
     def on_game_start(self):
         """Called on start up, passed from IDABot.on_game_start()."""
         ScaiBackbone.on_game_start(self)
-        create_troop(Point2D(35, 123))
+        if self.side() == 'right':
+            create_troop(Point2D(119, 47))
+        else:
+            create_troop(Point2D(33, 120))
         create_workplace(self.base_location_manager \
         .get_player_starting_base_location(PLAYER_SELF), self)
 
@@ -27,12 +30,20 @@ class MyAgent(ScaiBackbone):
         self.look_for_new_units()
         print_debug(self)
        # self.get_coords()
+        self.worker_do()
         for workplace in workplaces:
             workplace.on_step(self)
         workplaces[-1].expansion(self)
         self.train_scv()
         self.train_marine()
-        self.defence()
+        self.expansion()
+        self.get_coords()
+
+    def get_coords(self):
+        """Prints position of all workers"""
+        for unit in self.get_my_units():
+            text = str(unit.position)
+            self.map_tools.draw_text(unit.position, text, Color(255, 255, 255))
 
     def side(self):
         """Return what side player spawns on"""
@@ -67,10 +78,17 @@ class MyAgent(ScaiBackbone):
         if unit in scouts:
             remove_scout(unit)
 
+    def on_idle_unit(self, unit: Unit):
+        """Called each time a unit is idle."""
+        if unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_BARRACKS:
+            self.train_marine()
+
     def on_new_my_unit(self, unit: Unit):
         """Called each time a new unit is noticed."""
         self.train_marine()
         self.defence()
+        # self.look_for_new_units()
+
         if unit.unit_type.is_building:
             for workplace in workplaces:
                 workplace.on_building_completed(unit)
@@ -96,7 +114,7 @@ class MyAgent(ScaiBackbone):
             work = closest_workplace(unit.position)
             if work:
                 work.add_refinery(unit)
-                print("ref built")
+                # print("ref built")
                 work.update_workers(self)
 
         elif unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_BARRACKS:
@@ -126,6 +144,10 @@ class MyAgent(ScaiBackbone):
         """Find units that has not been noticed by the bot."""
         temp_remember_these = self.remember_these.copy()
         for unit in self.get_all_units():
+            # If idle call on_idle_unit()
+            if unit.is_idle:
+                self.on_idle_unit(unit)
+
             if unit not in temp_remember_these:
                 if unit.is_completed and unit.is_alive and unit.is_valid:
                     self.remember_these.append(unit)
@@ -170,7 +192,6 @@ class MyAgent(ScaiBackbone):
                     trainer.train(scv_type)
                     count_needed -= 1
                     ccs.remove(trainer)
-
 
     def currently_building(self, unit_type): #AW
         """"Checks if a unit is currently being built"""
@@ -223,33 +244,44 @@ class MyAgent(ScaiBackbone):
         """Calculates the squared distance between 2 points"""
         return (p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2
 
-    def start_choke_point(self):  # AW
-        """Returns the choke point closest to command center"""
-        if self.side() == 'right':
-            return Point2D(119, 47)
-        else:
-            return Point2D(33, 120)
-
-    def defence(self):  # AW
-        """Moves troops to a nearby choke point"""
-        for i, troop in enumerate(troops):
-            if (troop.target.x, troop.target.y) != \
-                    (self.choke_points(i).x, self.choke_points(i).y):
-                troop.move_units(self.choke_points(i))
-
-    def choke_points(self, base_nr):
+    def choke_points(self, coordinates) -> Point2D:
         """Returns the appropriate choke point"""
-        left = [Point2D(33, 120), Point2D(37, 110), Point2D(67, 117),
-                Point2D(65, 86), Point2D(37, 110)]
-        right = [Point2D(119, 47), Point2D(114, 58), Point2D(85, 50),
-                 Point2D(60, 62), Point2D(98, 89), Point2D(41, 33)]
+        choke_point_dict = {(59, 28): (52, 35), (125, 137): (127, 128),
+                            (58, 128): (67, 116), (125, 30): (119, 47),
+                            (92, 139): (99, 130), (25, 111): (44, 101),
+                            (26, 81): (30, 67), (86, 114): (93, 102),
+                            (91, 71): (88, 82), (93, 39): (85, 50),
+                            (126, 56): (108, 67), (65, 53): (69, 58),
+                            (125, 86): (121, 100), (26, 30): (23, 39),
+                            (26, 137): (33, 120)}
 
-        if self.side() == 'left':
-            return left[base_nr]
-        elif self.side() == 'right':
-            return right[base_nr]
-        else:
-            raise IndexError('Choke point list out of range')
+        return Point2D(choke_point_dict[coordinates][0],
+                       choke_point_dict[coordinates][1])
+
+    def expansion(self):  # AW
+        """Builds new command center when needed"""
+        marines = UNIT_TYPEID.TERRAN_MARINE
+        command_center = UNIT_TYPEID.TERRAN_COMMANDCENTER
+        command_center_type = UnitType(UNIT_TYPEID.TERRAN_COMMANDCENTER, self)
+        location = self.base_location_manager.get_next_expansion(PLAYER_SELF).\
+            depot_position
+        workplace = closest_workplace(location)
+        worker = workplace.get_suitable_worker_and_remove()
+
+        if len(get_my_type_units(self, marines)) >= \
+                len(workplaces) * 8\
+                and can_afford(self, command_center_type)\
+                and not currently_building(self, command_center)\
+                and worker:
+
+            new_workplace = create_workplace\
+                (self.base_location_manager.get_next_expansion(PLAYER_SELF),
+                 self)
+
+            new_workplace += worker
+            new_workplace.have_worker_construct(command_center_type, location)
+
+            create_troop(self.choke_points((location.x, location.y)))
 
 if __name__ == "__main__":
     MyAgent.bootstrap()
