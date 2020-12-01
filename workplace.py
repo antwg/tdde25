@@ -3,6 +3,7 @@ import random
 
 from library import *
 
+from scai_backbone import orders_for_units
 from funcs import *
 from armies import *
 
@@ -13,7 +14,6 @@ refinery_TYPEID = [UNIT_TYPEID.TERRAN_REFINERY, UNIT_TYPEID.TERRAN_REFINERYRICH]
 class Workplace:
     """handles jobs for workers"""
     location: BaseLocation
-    target_miners: List[Unit]  # Target for minders
 
     workers: List[Unit]  # All workers in this workplace
     miners: List[Unit]  # All miners in this workplace
@@ -27,12 +27,14 @@ class Workplace:
                                          + self.gasers_capacity)
 
     miners_capacity = property(
-        lambda self: 2 * len(self.miners_targets))  # How many miners this workplace is asking for
+        lambda self: 2 * len(self.mineral_fields))  # How many miners this workplace is asking for
     gasers_capacity = property(lambda self: 3 * len(self.refineries))  # How many gasers this workplace is asking for
     max_number_of_barracks: int = 2
 
     under_attack: bool  # If workplace is under attack or not
-    miners_targets: List[Unit]
+
+    mineral_fields: List[Unit]  # All mineral fields in workplace
+    geysers: List[Unit]  # All geysers in workplace
     builders_targets: Dict[Unit, tuple]  # Tuple is (what: UnitType, where: Point2D)
 
     has_enough = property(lambda self: len(self.miners)
@@ -56,15 +58,14 @@ class Workplace:
         self.build_supply_depot(bot)
         if len(self.refineries) < 2:
             self.build_refinery(bot)
-        self.expansion(bot)
 
-    def on_idle_unit(self, unit: Unit, bot: IDABot):
+    def on_idle_my_unit(self, unit: Unit, bot: IDABot):
         if unit in self.miners:
-            unit.right_click(random.choice(self.miners_targets))
+            orders_for_units[unit.id] = self.order_click_mineral(unit)
         elif unit in self.gasers:
             for refinery, gasers in self.refineries.items():
                 if unit in gasers:
-                    unit.right_click(refinery)
+                    orders_for_units[unit.id] = self.order_click_refinery(unit, refinery)
                     break
 
     def __init__(self, location: BaseLocation, bot: IDABot):
@@ -73,7 +74,8 @@ class Workplace:
         self.location = location
         self.workers = []
         self.miners = []
-        self.miners_targets = get_mineral_fields(bot, location)
+        self.mineral_fields = []
+        self.geysers = []
         self.gasers = []
         self.builders = []
         self.builders_targets = {}
@@ -84,42 +86,41 @@ class Workplace:
 
     # ZW
     def add_miner(self, worker: Unit):
-        print("miner added:", self.str_unit(worker))
+        orders_for_units[worker.id] = self.order_stop(worker)
+        # print(self.str_unit(worker), ": miner added")
         self.miners.append(worker)
 
     # ZW
     def remove_miner(self, worker: Unit):
-        print("miner removed:", self.str_unit(worker))
+        # print(self.str_unit(worker), ": miner removed")
         self.miners.remove(worker)
-        worker.stop()
 
     # ZW
     def add_gaser(self, worker: Unit, refinery: Unit):
-        print("gaser added:", self.str_unit(worker))
+        orders_for_units[worker.id] = self.order_stop(worker)
+        # print(self.str_unit(worker), ": gaser added")
         self.gasers.append(worker)
         self.refineries[refinery].append(worker)
 
     # ZW
     def remove_gaser(self, worker: Unit):
-        print("gaser removed:", self.str_unit(worker))
+        # print(self.str_unit(worker), ": gaser removed")
         self.gasers.remove(worker)
         for refinery, gasers in self.refineries.items():
             if worker in gasers:
                 self.refineries[refinery].remove(worker)
-        worker.stop()
 
     # ZW
     def add_builder(self, worker: Unit):
-        print("builder added:", self.str_unit(worker))
+        # print(self.str_unit(worker), ": builder added")
         self.builders.append(worker)
 
     # ZW
     def remove_builder(self, worker: Unit):
-        print("builder removed:", self.str_unit(worker))
+        # print(self.str_unit(worker), ": builder removed")
         self.builders.remove(worker)
         if worker in self.builders_targets:
             del self.builders_targets[worker]
-        worker.stop()
 
     # ZW
     def free_worker(self, worker: Unit):
@@ -138,7 +139,6 @@ class Workplace:
                     self.free_worker(worker)
                     self.add_gaser(worker, refinery)
                     break
-
         else:
             self.free_worker(worker)
             self.add_miner(worker)
@@ -198,17 +198,25 @@ class Workplace:
             self.have_worker_construct(barrack, location)
             # print('building barrack')
 
-    # DP
+    # ZW
     def build_refinery(self, bot: IDABot):
         """Builds a refinery at base location, then calls for collection."""
-        refinery = UnitType(UNIT_TYPEID.TERRAN_REFINERY, bot)
-        geysers_list = get_my_geysers(bot)
-        for geyser in geysers_list:
-            if not currently_building(bot, UNIT_TYPEID.TERRAN_REFINERY) and \
-                    get_refinery(bot, geyser) is None and \
-                    can_afford(bot, refinery) \
-                    and not self.is_building_unittype(refinery):
-                self.have_worker_construct(refinery, geyser)
+        if len(self.geysers) > len(self.refineries):
+            refinery_type = UnitType(UNIT_TYPEID.TERRAN_REFINERY, bot)
+
+            if not self.is_building_unittype(refinery_type) \
+                    and can_afford(bot, refinery_type):
+
+                for geyser in self.geysers:
+                    geyser_occupied = False
+                    for refinery in self.refineries:
+                        if refinery.position.squared_dist(geyser.position) < 1:
+                            geyser_occupied = True
+                            break
+
+                    if not geyser_occupied:
+                        self.have_worker_construct(refinery_type, geyser)
+                        break
 
     def building_location_finder(self, bot: IDABot, unit_type):
         """Finds a suitable location to build a unit of given type"""
@@ -256,7 +264,6 @@ class Workplace:
                 continue
 
             if unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_SCV:
-                unit.stop()
                 self.workers.append(unit)
 
                 goto_gaser = None
@@ -300,6 +307,56 @@ class Workplace:
 
         return self
 
+    # ZW
+    def order_click_mineral(self, worker: Unit):
+        """A function that have a worker gather minerals."""
+        mineral = random.choice(self.mineral_fields)
+
+        def click_mineral():
+            print(self.str_unit(worker) + " : clicking " + str(mineral) + ":" + str(mineral.id))
+            worker.right_click(mineral)
+
+        return click_mineral
+
+    # ZW
+    def order_click_refinery(self, worker: Unit, refinery: Unit):
+        """Return a function that haves a worker gather gas."""
+
+        def click_refinery():
+            print(self.str_unit(worker) + " : clicking " + str(refinery) + ":" + str(refinery.id))
+            worker.right_click(refinery)
+
+        return click_refinery
+
+    # ZW
+    def order_build(self, worker, building, position):
+        """Return a function that haves a worker build structure on position."""
+
+        def build():
+            print(self.str_unit(worker) + " : building " + str(building) + " at " + str(position))
+            worker.build(building, position)
+
+        return build
+
+    # ZW
+    def order_build_target(self, worker, building, position):
+        """Return a function that haves a worker build structure on target."""
+
+        def build():
+            print(self.str_unit(worker) + " : building " + str(building) + " on " + str(position) + str(position.id))
+            worker.build_target(building, position)
+
+        return build
+
+    # ZW
+    def order_stop(self, worker):
+        """Return a function that haves a worker build structure on target."""
+
+        def stop():
+            worker.stop()
+
+        return stop
+
     def add_refinery(self, refinery):
         self.refineries[refinery] = []
 
@@ -317,15 +374,15 @@ class Workplace:
         return False
 
     def on_building_completed(self, building: Unit):
-        print("done:", building)
+        # print("done:", building)
         for builder, target in self.builders_targets.items():
             if target[1] == building.tile_position \
                     and target[0] == building.unit_type:
-                print("builder done:", builder)
+                # print("builder done:", builder)
                 self.remove_builder(builder)
                 self.assign_worker_job(builder)
                 break
-        #print("miss!")
+        # print("miss!")
 
     # ZW
     def have_worker_construct(self, building: UnitType, position: Union[Point2DI, Unit]):
@@ -333,10 +390,10 @@ class Workplace:
 
         if worker:
             if isinstance(position, Point2DI):
-                build = lambda: worker.build(building, position)
+                build = self.order_build(worker, building, position)
                 target = (building, position)
             elif isinstance(position, Unit):
-                build = lambda: worker.build_target(building, position)
+                build = self.order_build_target(worker, building, position)
                 target = (building, position.tile_position)
             else:
                 print("'I can't build here!' - The building can't be constructed")
@@ -344,10 +401,10 @@ class Workplace:
                 build = None
 
             if target:
-                print(worker, ":", target)
+                # print(worker, ":", target)
                 self.free_worker(worker)
                 self.add_builder(worker)
-                build()
+                orders_for_units[worker.id] = build
                 self.builders_targets[worker] = target
 
     def is_building_unittype(self, barrack) -> bool:
@@ -368,19 +425,18 @@ class Workplace:
         return found
 
     def str_unit(self, worker: Unit):
-        return str(worker) +":"+ str(worker.id) + "  on " + str(workplaces.index(self))
+        return str(worker) + ":" + str(worker.id) + "  on " + str(workplaces.index(self))
 
 
 # All workplaces!
 workplaces = []
 
 
-# DP
+# ZW, DP
 def create_workplace(bot: IDABot, location: BaseLocation) -> Workplace:
-    """Create"""
-    workplace = Workplace(bot, location)
-    workplaces.append(workplace)
-    return workplace
+    """Create and remember a new workplace at given location."""
+    workplaces.append(Workplace(bot, location))
+    return workplaces[-1]
 
 
 # DP, ZW

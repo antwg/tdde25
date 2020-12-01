@@ -20,18 +20,32 @@ class MyAgent(ScaiBackbone):
         create_troop(Point2D(35, 123))
         create_workplace(self.base_location_manager \
         .get_player_starting_base_location(PLAYER_SELF), self)
+        self.unit = None
 
     def on_step(self):
         """Called each cycle, passed from IDABot.on_step()."""
         ScaiBackbone.on_step(self)
+
         self.look_for_new_units()
+
         print_debug(self)
         # self.get_coords()
         for workplace in workplaces:
+            for location in self.base_location_manager.base_locations:
+                if location.depot_position == workplace.location.depot_position:
+                    workplace.location = location
+
+            for target in workplace.mineral_fields:
+                self.map_tools.draw_text(target.position, "M" + str(workplaces.index(workplace)))
             workplace.on_step(self)
+
+        workplaces[-1].expansion(self)
+            
         self.train_scv()
         # self.train_marine()
         # self.defence()
+
+        execute_all_orders()
 
     def side(self):
         """Return what side player spawns on"""
@@ -51,13 +65,7 @@ class MyAgent(ScaiBackbone):
         if troop:
             troop.member_lost(unit)
 
-        # Remove minerals from workplace.miners_targets
-        if unit.unit_type.unit_typeid in minerals_TYPEIDS:
-            for workplace in workplaces:
-                if unit in workplace.miners_targets:
-                    workplace.miners_targets.remove(unit)
-
-    def on_idle_unit(self, unit: Unit):
+    def on_idle_my_unit(self, unit: Unit):
         """Called each time a unit is idle."""
         if unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_BARRACKS:
             self.train_marine()
@@ -66,7 +74,7 @@ class MyAgent(ScaiBackbone):
 
             for workplace in workplaces:
                 if workplace.has_unit(unit):
-                    workplace.on_idle_unit(unit, self)
+                    workplace.on_idle_my_unit(unit, self)
 
     def on_new_my_unit(self, unit: Unit):
         """Called each time a new unit is noticed."""
@@ -107,13 +115,32 @@ class MyAgent(ScaiBackbone):
             work.add_barracks(unit)
             work.update_workers(self)
 
-        elif unit.unit_type.unit_typeid is UNIT_TYPEID.TERRAN_COMMANDCENTER:
+        elif unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_COMMANDCENTER:
             print("should be making a workplace")
 
         elif unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_SCV:
             workplace = scv_seeks_workplace(unit.position)
             if workplace:
                 workplace += unit
+
+    def on_discover_unit(self, unit: Unit):
+        """Called when a unit is discovered, even when new_my_unit."""
+        if unit.unit_type.unit_typeid in minerals_TYPEIDS and unit.minerals_left_in_mineralfield > 0:
+            for workplace in workplaces:
+                if workplace.location.contains_position(unit.position):
+                    workplace.mineral_fields.append(unit)
+
+        elif unit.unit_type.unit_typeid in geysers_TYPEIDS and unit.gas_left_in_refinery > 0:
+            for workplace in workplaces:
+                if workplace.location.contains_position(unit.position):
+                    workplace.geysers.append(unit)
+
+    def on_lost_unit(self, unit: Unit):
+        """Called when a unit is lost, even when lost_my_unit."""
+        if unit.unit_type.unit_typeid in minerals_TYPEIDS and unit.minerals_left_in_mineralfield > 0:
+            for workplace in workplaces:
+                if workplace.location.contains_position(unit.position):
+                    workplace.mineral_fields.append(unit)
 
     remember_these: List[Unit] = []
 
@@ -122,18 +149,22 @@ class MyAgent(ScaiBackbone):
         temp_remember_these = self.remember_these.copy()
         for unit in self.get_all_units():
             # If idle call on_idle_unit()
-            if unit.is_idle:
-                self.on_idle_unit(unit)
+            if unit.is_idle and unit.owner == self.id:
+                self.on_idle_my_unit(unit)
 
             if unit not in temp_remember_these:
-                if unit.is_completed and unit.is_alive and unit.is_valid:
+                if unit.is_completed and unit.is_alive and unit.is_valid \
+                        and self.map_tools.is_explored(unit.position):
                     self.remember_these.append(unit)
                     if unit.owner == self.id:
                         self.on_new_my_unit(unit)
+                    self.on_discover_unit(unit)
             else:
                 temp_remember_these.remove(unit)
                 if not unit.is_completed or not unit.is_alive or not unit.is_valid:
-                    self.on_lost_my_unit(unit)
+                    if unit.owner == self.id:
+                        self.on_lost_my_unit(unit)
+                    self.on_lost_unit(unit)
                     self.remember_these.remove(unit)
         for remembered_unit in temp_remember_these:
             # How to handle not found units?

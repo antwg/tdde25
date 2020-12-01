@@ -27,6 +27,15 @@ minerals_TYPEIDS = [
     UNIT_TYPEID.NEUTRAL_PURIFIERMINERALFIELD750,
     UNIT_TYPEID.NEUTRAL_PURIFIERRICHMINERALFIELD750]
 
+geysers_TYPEIDS = [
+    UNIT_TYPEID.NEUTRAL_PROTOSSVESPENEGEYSER,
+    UNIT_TYPEID.NEUTRAL_VESPENEGEYSER,
+    UNIT_TYPEID.NEUTRAL_SPACEPLATFORMGEYSER,
+    UNIT_TYPEID.NEUTRAL_SHAKURASVESPENEGEYSER,
+    UNIT_TYPEID.NEUTRAL_RICHVESPENEGEYSER,
+    UNIT_TYPEID.NEUTRAL_PURIFIERVESPENEGEYSER
+]
+
 refineries_TYPEIDS = [
     UNIT_TYPEID.TERRAN_REFINERY,
     UNIT_TYPEID.TERRAN_REFINERYRICH,
@@ -50,6 +59,16 @@ Point2D.to_i = lambda self: Point2DI(round(self.x), round(self.y))
 Point2DI.to_f = lambda self: Point2D(self.x, self.y)
 
 
+orders_for_units = {}
+
+def execute_all_orders():
+    """"""
+    for id, order in orders_for_units.items():
+        order()
+
+    orders_for_units.clear()
+
+
 class ScaiBackbone(IDABot):
 
     id: int  # The value of owner in it's units that corresponds to this player
@@ -66,7 +85,7 @@ class ScaiBackbone(IDABot):
         if not self.id:
             for unit in self.get_my_units():
                 self.id = unit.owner
-                print("ID:", self.id)
+                # print("ID:", self.id)
                 break
 
     @classmethod
