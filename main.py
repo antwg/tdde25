@@ -39,8 +39,6 @@ class MyAgent(ScaiBackbone):
         self.train_scv()
         self.train_marine()
         self.expansion()
-        
-        execute_all_orders()
 
     def get_coords(self):
         """Prints position of all workers"""

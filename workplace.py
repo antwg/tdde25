@@ -3,7 +3,6 @@ import random
 import math
 from library import *
 
-from scai_backbone import orders_for_units, minerals_TYPEIDS
 from funcs import *
 from armies import *
 
@@ -65,11 +64,11 @@ class Workplace:
 
     def on_idle_my_unit(self, unit: Unit, bot: IDABot):
         if unit in self.miners:
-            orders_for_units[unit.id] = self.order_click_mineral(unit)
+            unit.right_click(random.choice(self.mineral_fields))
         elif unit in self.gasers:
             for refinery, gasers in self.refineries.items():
                 if unit in gasers:
-                    orders_for_units[unit.id] = self.order_click_refinery(unit, refinery)
+                    unit.right_click(refinery)
                     break
 
     def __init__(self, location: BaseLocation, bot: IDABot):
@@ -93,16 +92,13 @@ class Workplace:
     def get_scout(self):
         """Returns a suitable scout (worker)"""
         worker = self.get_suitable_worker_and_remove()
-
         if worker:
             add_scout(worker)
-            return worker
-        else:
-            return None
+        return worker
 
     # ZW
     def add_miner(self, worker: Unit):
-        orders_for_units[worker.id] = self.order_stop(worker)
+        worker.stop()
         # print(self.str_unit(worker), ": miner added")
         self.miners.append(worker)
 
@@ -113,7 +109,7 @@ class Workplace:
 
     # ZW
     def add_gaser(self, worker: Unit, refinery: Unit):
-        orders_for_units[worker.id] = self.order_stop(worker)
+        worker.stop()
         # print(self.str_unit(worker), ": gaser added")
         self.gasers.append(worker)
         self.refineries[refinery].append(worker)
@@ -192,7 +188,7 @@ class Workplace:
 
     def get_units(self):
         """Get all units in troop."""
-        return self.workers + self.others
+        return self.workers + self.others + self.barracks + self.factories
 
     def has_unit(self, unit: Unit) -> bool:
         """Check if workplace has unit."""
@@ -345,56 +341,6 @@ class Workplace:
 
         return self
 
-    # ZW
-    def order_click_mineral(self, worker: Unit):
-        """A function that have a worker gather minerals."""
-        mineral = random.choice(self.mineral_fields)
-
-        def click_mineral():
-            print(self.str_unit(worker) + " : clicking " + str(mineral) + ":" + str(mineral.id))
-            worker.right_click(mineral)
-
-        return click_mineral
-
-    # ZW
-    def order_click_refinery(self, worker: Unit, refinery: Unit):
-        """Return a function that haves a worker gather gas."""
-
-        def click_refinery():
-            print(self.str_unit(worker) + " : clicking " + str(refinery) + ":" + str(refinery.id))
-            worker.right_click(refinery)
-
-        return click_refinery
-
-    # ZW
-    def order_build(self, worker, building, position):
-        """Return a function that haves a worker build structure on position."""
-
-        def build():
-            print(self.str_unit(worker) + " : building " + str(building) + " at " + str(position))
-            worker.build(building, position)
-
-        return build
-
-    # ZW
-    def order_build_target(self, worker, building, position):
-        """Return a function that haves a worker build structure on target."""
-
-        def build():
-            print(self.str_unit(worker) + " : building " + str(building) + " on " + str(position) + str(position.id))
-            worker.build_target(building, position)
-
-        return build
-
-    # ZW
-    def order_stop(self, worker):
-        """Return a function that haves a worker build structure on target."""
-
-        def stop():
-            worker.stop()
-
-        return stop
-
     def add_refinery(self, refinery):
         self.refineries[refinery] = []
 
@@ -428,10 +374,10 @@ class Workplace:
 
         if worker:
             if isinstance(position, Point2DI):
-                build = self.order_build(worker, building, position)
+                build = lambda: worker.build(building, position)
                 target = (building, position)
             elif isinstance(position, Unit):
-                build = self.order_build_target(worker, building, position)
+                build = lambda: worker.build_target(building, position)
                 target = (building, position.tile_position)
             else:
                 print("'I can't build here!' - The building can't be constructed")
@@ -442,7 +388,8 @@ class Workplace:
                 # print(worker, ":", target)
                 self.free_worker(worker)
                 self.add_builder(worker)
-                orders_for_units[worker.id] = build
+                build()
+                # orders_for_units[worker.id] = build
                 self.builders_targets[worker] = target
 
     def is_building_unittype(self, barrack) -> bool:

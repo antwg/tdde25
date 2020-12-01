@@ -59,17 +59,6 @@ Point2D.to_i = lambda self: Point2DI(round(self.x), round(self.y))
 Point2DI.to_f = lambda self: Point2D(self.x, self.y)
 
 
-orders_for_units = {}
-
-
-def execute_all_orders():
-    """"""
-    for id, order in orders_for_units.items():
-        order()
-
-    orders_for_units.clear()
-
-
 class ScaiBackbone(IDABot):
 
     id: int  # The value of owner in it's units that corresponds to this player
