@@ -4,6 +4,8 @@ from library import *
 
 from scai_backbone import siege_tanks_TYPEIDS
 
+from workplace import *
+
 
 # ZW
 class Troop:
@@ -54,6 +56,9 @@ class Troop:
             self.tanks.remove(unit)
         elif unit in self.others:
             self.others.remove(unit)
+
+    #def build_bunker(self, location: Point2D):
+     #   return workplace.have_worker_construct()
 
     def __iadd__(self, units: Union[Unit, Sequence[Unit]]):
         """Adds unit to troop. Note: It's called via troop += unit."""
@@ -136,3 +141,5 @@ def find_unit_troop(unit: Unit) -> Union[Troop, None]:
         if troop.has_unit(unit):
             return troop
     return None
+
+
