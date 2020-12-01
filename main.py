@@ -21,9 +21,8 @@ class MyAgent(ScaiBackbone):
             create_troop(Point2D(119, 47))
         else:
             create_troop(Point2D(33, 120))
-        create_workplace(self.base_location_manager \
-        .get_player_starting_base_location(PLAYER_SELF), self)
-        self.unit = None
+        create_workplace(self.base_location_manager
+                         .get_player_starting_base_location(PLAYER_SELF), self)
 
     def on_step(self):
         """Called each cycle, passed from IDABot.on_step()."""
@@ -33,20 +32,12 @@ class MyAgent(ScaiBackbone):
 
         print_debug(self)
         # self.get_coords()
-        for workplace in workplaces:
-            for location in self.base_location_manager.base_locations:
-                if location.depot_position == workplace.location.depot_position:
-                    workplace.location = location
 
-            for target in workplace.mineral_fields:
-                self.map_tools.draw_text(target.position, "M" + str(workplaces.index(workplace)))
+        for workplace in workplaces:
             workplace.on_step(self)
 
-        workplaces[-1].expansion(self)
-            
         self.train_scv()
         self.train_marine()
-        self.defence()
         self.expansion()
         
         execute_all_orders()
@@ -90,13 +81,12 @@ class MyAgent(ScaiBackbone):
         if unit in scouts:
             remove_scout(unit)
 
-    def on_idle_unit(self, unit: Unit):
+    def on_idle_my_unit(self, unit: Unit):
         """Called each time a unit is idle."""
         if unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_BARRACKS:
             self.train_marine()
 
         if unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_SCV:
-
             for workplace in workplaces:
                 if workplace.has_unit(unit):
                     workplace.on_idle_my_unit(unit, self)
@@ -113,9 +103,6 @@ class MyAgent(ScaiBackbone):
 
         if unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_SUPPLYDEPOT:
             unit.ability(ABILITY_ID.MORPH_SUPPLYDEPOT_LOWER)
-            work = closest_workplace(unit.position)
-            if work:
-                work.update_workers(self)
 
         elif unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_MARINE:
             troop = marine_seeks_troop(unit.position)
@@ -131,30 +118,27 @@ class MyAgent(ScaiBackbone):
         elif unit.unit_type.unit_typeid in refineries_TYPEIDS:
             work = closest_workplace(unit.position)
             if work:
-                work.add_refinery(unit)
+                work += unit
                 # print("ref built")
-                work.update_workers(self)
 
         elif unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_BARRACKS:
             work = closest_workplace(unit.position)
             if work:
-                work.add_barracks(unit)
-                work.update_workers(self)
+                work += unit
 
         elif unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_COMMANDCENTER:
-            print("should be making a workplace")
+            # print("should be making a workplace")
+            pass
 
         elif unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_SCV:
             workplace = closest_workplace(unit.position)
             if workplace:
-                print("work is now added", workplace.location, workplace.miners)
                 workplace += unit
                 
         elif unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_FACTORY:
             work = closest_workplace(unit.position)
             if work:
-                work.add_factory(unit)
-                work.update_workers(self)
+                work += unit
 
     def on_discover_unit(self, unit: Unit):
         """Called when a unit is discovered, even when new_my_unit."""
@@ -170,10 +154,10 @@ class MyAgent(ScaiBackbone):
 
     def on_lost_unit(self, unit: Unit):
         """Called when a unit is lost, even when lost_my_unit."""
-        if unit.unit_type.unit_typeid in minerals_TYPEIDS and unit.minerals_left_in_mineralfield > 0:
+        if unit.unit_type.unit_typeid in minerals_TYPEIDS:
             for workplace in workplaces:
                 if workplace.location.contains_position(unit.position):
-                    workplace.mineral_fields.append(unit)
+                    workplace.mineral_fields.remove(unit)
 
     remember_these: List[Unit] = []
 
@@ -204,19 +188,6 @@ class MyAgent(ScaiBackbone):
             pass
 
     # ZW
-    def is_worker_collecting_minerals(self, worker: Unit):
-        """Returns: True if a unit is collecting Minerals, False otherwise."""
-        # TODO: Make it return the value correctly
-        # ARGH!!! AbilityID is the one to solve it but it's broken!
-        # An AbilityID can't be compared to another or a ABILITY_ID. WHY?!
-        return worker.unit_type.is_worker \
-            and worker.has_target \
-            and worker.target.unit_type.unit_typeid in minerals_TYPEIDS \
-            or (worker.is_carrying_minerals
-                and worker.target.unit_type.unit_typeid
-                in grounded_command_centers_TYPEIDS)
-
-    # ZW
     def train_scv(self):
         """Builds a SCV if possible on a base if needed."""
         scv_type = UnitType(UNIT_TYPEID.TERRAN_SCV, self)
@@ -236,7 +207,7 @@ class MyAgent(ScaiBackbone):
 
     def currently_building(self, unit_type): #AW
         """"Checks if a unit is currently being built"""
-        # TODO: Rewrite
+        # TODO: Rewrite/Delete?
         return any([unit.build_percentage < 1 for unit in
                     get_my_type_units(self, unit_type)])
 
@@ -306,23 +277,23 @@ class MyAgent(ScaiBackbone):
         command_center_type = UnitType(UNIT_TYPEID.TERRAN_COMMANDCENTER, self)
         location = self.base_location_manager.get_next_expansion(PLAYER_SELF).\
             depot_position
-        workplace = closest_workplace(location)
-        worker = workplace.get_suitable_worker_and_remove()
 
-        if len(get_my_type_units(self, marines)) >= \
-                len(workplaces) * 8\
+        if len(get_my_type_units(self, marines)) >= len(workplaces) * 8 \
                 and can_afford(self, command_center_type)\
-                and not currently_building(self, command_center)\
-                and worker:
+                and not currently_building(self, command_center):
 
-            new_workplace = create_workplace\
-                (self.base_location_manager.get_next_expansion(PLAYER_SELF),
-                 self)
+            workplace = closest_workplace(location)
+            worker = workplace.get_suitable_worker_and_remove()
 
-            new_workplace += worker
-            new_workplace.have_worker_construct(command_center_type, location)
+            if worker:
+                new_workplace = create_workplace\
+                    (self.base_location_manager.get_next_expansion(PLAYER_SELF),
+                     self)
 
-            create_troop(self.choke_points((location.x, location.y)))
+                new_workplace += worker
+                new_workplace.have_worker_construct(command_center_type, location)
+
+                create_troop(self.choke_points((location.x, location.y)))
 
 
 if __name__ == "__main__":

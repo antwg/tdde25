@@ -2,6 +2,7 @@ import time
 from scai_backbone import *
 from workplace import *
 
+
 def print_debug(bot: IDABot):
     # Skriver ut (< UnitType >  id: < id >  i: < enumereringsindex >)
     # för alla egna eneheter och resurser
@@ -11,6 +12,7 @@ def print_debug(bot: IDABot):
     # print_debug_geysers_near_base(self)
     print_unit_info(bot)
     print_unit_overview(bot)
+
 
     # tihi
     # DP

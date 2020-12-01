@@ -61,6 +61,7 @@ Point2DI.to_f = lambda self: Point2D(self.x, self.y)
 
 orders_for_units = {}
 
+
 def execute_all_orders():
     """"""
     for id, order in orders_for_units.items():
@@ -87,6 +88,7 @@ class ScaiBackbone(IDABot):
                 self.id = unit.owner
                 # print("ID:", self.id)
                 break
+
     def expansion(self):
         pass
 

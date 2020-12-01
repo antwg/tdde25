@@ -3,7 +3,7 @@ import random
 import math
 from library import *
 
-from scai_backbone import orders_for_units
+from scai_backbone import orders_for_units, minerals_TYPEIDS
 from funcs import *
 from armies import *
 
@@ -56,8 +56,10 @@ class Workplace:
 
     def on_step(self, bot: IDABot):
         """"""
-        # self.build_barrack(bot)
+        self.update_workers(bot)
+
         self.build_supply_depot(bot)
+        self.build_barrack(bot)
         self.build_factory(bot)
         self.build_refinery(bot)
 
@@ -90,11 +92,13 @@ class Workplace:
     # DP
     def get_scout(self):
         """Returns a suitable scout (worker)"""
-        for unit in self.miners:
-            if not unit.is_carrying_minerals:
-                add_scout(unit)
-                return unit
-        return None
+        worker = self.get_suitable_worker_and_remove()
+
+        if worker:
+            add_scout(worker)
+            return worker
+        else:
+            return None
 
     # ZW
     def add_miner(self, worker: Unit):
@@ -157,7 +161,14 @@ class Workplace:
 
     # DP
     def update_workers(self, bot: IDABot):
-        """Updates """
+        """Updates all workers"""
+        lazy_builders = []
+        for builder in self.builders:
+            if builder.has_target and builder.target.unit_type.unit_typeid in minerals_TYPEIDS:
+                lazy_builders.append(builder)
+        for builder in lazy_builders:
+            self.assign_worker_job(builder)
+
         for worker in self.workers:
             if self.wants_gasers and worker in self.miners:
                 for refinery, units in self.refineries.items():
@@ -206,10 +217,8 @@ class Workplace:
         """Builds a barrack when necessary."""
         barrack = UnitType(UNIT_TYPEID.TERRAN_BARRACKS, bot)
 
-        if bot.minerals >= barrack.mineral_price\
-                and len(self.barracks) <\
-                self.max_number_of_barracks\
-                and not currently_building(bot, UNIT_TYPEID.TERRAN_BARRACKS) \
+        if can_afford(bot, barrack) \
+                and len(self.barracks) < self.max_number_of_barracks \
                 and not self.is_building_unittype(barrack)\
                 and len(self.miners) > 5:
 
@@ -238,14 +247,14 @@ class Workplace:
                     if not geyser_occupied:
                         self.have_worker_construct(refinery_type, geyser)
                         break
+
     def build_factory(self, bot: IDABot):  # DP
         """Builds a barrack when necessary."""
         factory = UnitType(UNIT_TYPEID.TERRAN_FACTORY, bot)
         factory_with_upgrade = UnitType(UNIT_TYPEID.TERRAN_FACTORYTECHLAB, bot)
 
-        if bot.minerals >= factory.mineral_price \
-                and len(self.factories) < \
-                self.max_number_of_factories \
+        if can_afford(bot, factory) \
+                and len(self.factories) < self.max_number_of_factories \
                 and not currently_building(bot, UNIT_TYPEID.TERRAN_FACTORY) \
                 and not self.is_building_unittype(factory)\
                 and len(self.miners) > 5:
@@ -291,8 +300,16 @@ class Workplace:
                 else:
                     self.add_miner(unit)
 
+            elif unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_BARRACKS:
+                self.add_barracks(unit)
+
+            elif unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_FACTORY:
+                self.add_factory(unit)
+
+            elif unit.unit_type.unit_typeid in refinery_TYPEID:
+                self.add_refinery(unit)
+
             else:
-                print("unit has come to the other side")
                 self.others.append(unit)
 
         return self
@@ -319,6 +336,12 @@ class Workplace:
 
             if unit in self.others:
                 self.others.remove(unit)
+
+            if unit in self.barracks:
+                self.barracks.remove(unit)
+
+            if unit in self.factories:
+                self.factories.remove(unit)
 
         return self
 
@@ -474,14 +497,19 @@ def create_workplace(bot: IDABot, location: BaseLocation) -> Workplace:
 # DP, ZW
 def closest_workplace(pos: Point2D) -> Workplace:
     """Checks the closest workplace to a position"""
-    closest = None
-    distance = 0
+    closest = [None, None]
+    distance = [0, 0]
     for workplace in workplaces:
-        if not closest or distance > workplace.location.position.dist(pos):
-            closest = workplace
-            distance = workplace.location.position.dist(pos)
+        if workplace.wants_scvs:
+            if not closest[0] or distance[0] > workplace.location.position.dist(pos):
+                closest[0] = workplace
+                distance[0] = workplace.location.position.dist(pos)
+        else:
+            if not closest[1] or distance[1] > workplace.location.position.dist(pos):
+                closest[1] = workplace
+                distance[1] = workplace.location.position.dist(pos)
 
-    return closest
+    return closest[0] if closest[0] else closest[1]
 
 
 # ZW
