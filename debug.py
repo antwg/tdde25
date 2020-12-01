@@ -2,80 +2,80 @@ import time
 from scai_backbone import *
 from workplace import *
 
-def print_debug(self):
+def print_debug(bot: IDABot):
     # Skriver ut (< UnitType >  id: < id >  i: < enumereringsindex >)
     # för alla egna eneheter och resurser
 
     # print_debug_my_units(self)
     # print_debug_minerals_near_base(self)
     # print_debug_geysers_near_base(self)
-    print_unit_info(self)
-    print_unit_overview(self)
+    print_unit_info(bot)
+    print_unit_overview(bot)
 
     # tihi
     # DP
-def print_debug_my_units(self):
+def print_debug_my_units(bot: IDABot):
     """Prints < UnitType >  id: < id >  i: < enumereringsindex > for the players units """
-    my_unit_list = self.get_my_units()
+    my_unit_list = bot.get_my_units()
 
     for i, my_unit in list(enumerate(my_unit_list)):
-        print_debug_all(self, my_unit, i)
+        print_debug_all(bot, my_unit, i)
 
 
     # DP
-def print_debug_minerals_near_base(self):
+def print_debug_minerals_near_base(bot: IDABot):
     """Prints < UnitType >  id: < id >  i: < enumereringsindex > for starting base minerals"""
-    start_location = self.base_location_manager.get_player_starting_base_location(PLAYER_SELF)
+    start_location = bot.base_location_manager.get_player_starting_base_location(PLAYER_SELF)
     mineral_unit_list = start_location.minerals
 
     for i, mineral_unit in list(enumerate(mineral_unit_list)):
-        print_debug_all(self, mineral_unit, i)
+        print_debug_all(bot, mineral_unit, i)
 
 
     # DP
-def print_debug_geysers_near_base(self):
+def print_debug_geysers_near_base(bot: IDABot):
     """Prints < UnitType >  id: < id >  i: < enumereringsindex > for starting base geysers"""
-    start_location = self.base_location_manager.get_player_starting_base_location(PLAYER_SELF)
+    start_location = bot.base_location_manager.get_player_starting_base_location(PLAYER_SELF)
     geysers_unit_list = start_location.geysers
 
     for i, geysers_unit in list(enumerate(geysers_unit_list)):
-        print_debug_all(self, geysers_unit, i)
+        print_debug_all(bot, geysers_unit, i)
 
 
     # DP
-def print_debug_all(self, unit, i):
+def print_debug_all(bot: IDABot, unit, i):
     """prints out the giver information < UnitType >  id: < id >  i: < enumereringsindex >"""
     text = str((unit.unit_type, "ID:", unit.id, "I:", i))
-    self.map_tools.draw_text(unit.position, text, Color(255, 255, 255))
+    bot.map_tools.draw_text(unit.position, text, Color(255, 255, 255))
 
 
     # DP
-def print_unit_info(self):
+def print_unit_info(bot: IDABot):
     """prints out units assignment"""
-    assignment_list = unit_assignment(self)
+    assignment_list = unit_assignment(bot)
     for unit in assignment_list:
-        self.map_tools.draw_text(unit.position, assignment_list[unit], Color(255, 255, 255))
+        bot.map_tools.draw_text(unit.position, assignment_list[unit], Color(255, 255, 255))
 
 
     # DP
-def print_unit_overview(self):
+def print_unit_overview(bot: IDABot):
     """Prints out the assignment and number of workers in the top left corner"""
-    assignment_amount_list = assignment_amount(self)
-    self.map_tools.draw_text_screen(0.01, 0.01, "Units Assignments:", Color(255, 255, 255))
-    self.map_tools.draw_text_screen(0.01, 0.03, "------------------", Color(255, 255, 255))
+    assignment_amount_list = assignment_amount(bot)
+    bot.map_tools.draw_text_screen(0.01, 0.01, "Units Assignments:", Color(255, 255, 255))
+    bot.map_tools.draw_text_screen(0.01, 0.03, "------------------", Color(255, 255, 255))
 
     space = 0.025
 
     for assignment, amount in assignment_amount_list.items():
         text = str(assignment) + ":"
-        self.map_tools.draw_text_screen(0.01, 0.03 + space, text, Color(255, 255, 255))
-        self.map_tools.draw_text_screen(0.1, 0.03 + space, str(amount), Color(255, 255, 255))
+        bot.map_tools.draw_text_screen(0.01, 0.03 + space, text, Color(255, 255, 255))
+        bot.map_tools.draw_text_screen(0.1, 0.03 + space, str(amount), Color(255, 255, 255))
 
-        space *= 2
+        space += 0.025
 
 
     # DP
-def unit_assignment(self):
+def unit_assignment(bot: IDABot):
     """Creates dictionary of unit and assignment, for the class Workplace"""
     assignment = {}
 
@@ -86,13 +86,23 @@ def unit_assignment(self):
             assignment[gaser] = "gas_gatherer"
         for builder in workplace.builders:
             assignment[builder] = "builder"
+        for refinery in workplace.refineries:
+            assignment[refinery] = "refinery"
+        for factory in workplace.factories:
+            assignment[factory] = "factory"
+        for barrack in workplace.barracks:
+            assignment[barrack] = "barrack"
 
-        return assignment
+        for troop in troops:
+            for marine in troop.marines:
+                assignment[marine] = "defence"
+
+    return assignment
 
 
-def assignment_amount(self):
+def assignment_amount(bot: IDABot):
     """Makes a dictionary of assignment and amount of personnel"""
-    unit_assignment_list = unit_assignment(self)
+    unit_assignment_list = unit_assignment(bot)
     assignment_amount_list = {}
 
     for unit, assignment in unit_assignment_list.items():
@@ -104,11 +114,11 @@ def assignment_amount(self):
     return assignment_amount_list
 
 
-def get_coords(self):
+def get_coords(bot: IDABot):
     """Prints position of all workers"""
-    for unit in self.get_my_workers():
+    for unit in bot.get_my_workers():
         text = str(unit.position)
-        self.map_tools.draw_text(unit.position, text, Color(255, 255, 255))
+        bot.map_tools.draw_text(unit.position, text, Color(255, 255, 255))
 
 
 # ZW
