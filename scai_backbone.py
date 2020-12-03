@@ -27,11 +27,21 @@ minerals_TYPEIDS = [
     UNIT_TYPEID.NEUTRAL_PURIFIERMINERALFIELD750,
     UNIT_TYPEID.NEUTRAL_PURIFIERRICHMINERALFIELD750]
 
+geysers_TYPEIDS = [
+    UNIT_TYPEID.NEUTRAL_PROTOSSVESPENEGEYSER,
+    UNIT_TYPEID.NEUTRAL_VESPENEGEYSER,
+    UNIT_TYPEID.NEUTRAL_SPACEPLATFORMGEYSER,
+    UNIT_TYPEID.NEUTRAL_SHAKURASVESPENEGEYSER,
+    UNIT_TYPEID.NEUTRAL_RICHVESPENEGEYSER,
+    UNIT_TYPEID.NEUTRAL_PURIFIERVESPENEGEYSER
+]
+
 refineries_TYPEIDS = [
     UNIT_TYPEID.TERRAN_REFINERY,
     UNIT_TYPEID.TERRAN_REFINERYRICH,
     UNIT_TYPEID.AUTOMATEDREFINERY,
     UNIT_TYPEID.INFESTEDREFINERY]
+
 
 siege_tanks_TYPEIDS = [
     UNIT_TYPEID.TERRAN_SIEGETANK,
@@ -74,8 +84,9 @@ class ScaiBackbone(IDABot):
         if not self.id:
             for unit in self.get_my_units():
                 self.id = unit.owner
-                print("ID:", self.id)
+                # print("ID:", self.id)
                 break
+
     def expansion(self):
         pass
 

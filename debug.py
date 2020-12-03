@@ -3,6 +3,7 @@ from scai_backbone import *
 from workplace import *
 from armies import *
 
+
 def print_debug(bot: IDABot):
     # Skriver ut (< UnitType >  id: < id >  i: < enumereringsindex >)
     # för alla egna eneheter och resurser
@@ -12,6 +13,7 @@ def print_debug(bot: IDABot):
     # print_debug_geysers_near_base(self)
     print_unit_info(bot)
     print_unit_overview(bot)
+
 
     # tihi
     # DP
@@ -81,18 +83,20 @@ def unit_assignment(bot: IDABot):
     assignment = {}
 
     for workplace in workplaces:
+        loyalty = " " + str(workplaces.index(workplace))
+        loyalty = ""
         for miner in workplace.miners:
-            assignment[miner] = "miner"
+            assignment[miner] = "miner" + loyalty
         for gaser in workplace.gasers:
-            assignment[gaser] = "gas_gatherer"
+            assignment[gaser] = "gas_gathrer" + loyalty
         for builder in workplace.builders:
-            assignment[builder] = "builder"
+            assignment[builder] = "builder" + loyalty
         for refinery in workplace.refineries:
-            assignment[refinery] = "refinery"
+            assignment[refinery] = "refinery" + loyalty
         for factory in workplace.factories:
-            assignment[factory] = "factory"
+            assignment[factory] = "factory" + loyalty
         for barrack in workplace.barracks:
-            assignment[barrack] = "barrack"
+            assignment[barrack] = "barrack" + loyalty
 
         for troop in troops:
             for marine in troop.marines:

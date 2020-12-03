@@ -23,7 +23,7 @@ class Troop:
 
     def __init__(self, position: Point2D):
         """Called when a new troop is being created. Note that no units are
-        required for making a troop, rather it is when units are made.
+        required for making a troop, rather it is why they are created.
         """
         self.target = position
         self.marines = []
@@ -31,12 +31,12 @@ class Troop:
         self.others = []
         self.under_attack = False
 
-    def get_units(self):
+    def get_units(self) -> List[Unit]:
         """Get all units in troop."""
         return self.marines + self.tanks + self.others
 
-    def move_units(self, position: Point2D):
-        """Moves troop and all its units."""
+    def move_units(self, position: Point2D) -> None:
+        """Moves troop and all its units to given position."""
         if self.target != position:
             for trooper in self.get_units():
                 trooper.move(position)
@@ -49,19 +49,8 @@ class Troop:
         else:
             return False
 
-    def member_lost(self, unit: Unit):
-        if unit in self.marines:
-            self.marines.remove(unit)
-        elif unit in self.tanks:
-            self.tanks.remove(unit)
-        elif unit in self.others:
-            self.others.remove(unit)
-
-    #def build_bunker(self, location: Point2D):
-     #   return workplace.have_worker_construct()
-
-    def __iadd__(self, units: Union[Unit, Sequence[Unit]]):
-        """Adds unit to troop. Note: It's called via troop += unit."""
+    def add(self, units: Union[Unit, Sequence[Unit]]) -> None:
+        """Adds unit(s) to troop."""
         if isinstance(units, Unit):
             units = [units]
 
@@ -76,23 +65,31 @@ class Troop:
                 self.others.append(unit)
                 unit.move(self.target)
 
-    @property
-    def has_enough(self):
-        """Check if the capacity is satisfied for all unit types."""
-        return len(self.marines) >= self.marines_capacity \
-               and len(self.tanks) >= self.tanks_capacity
+    def remove(self, unit: Unit) -> None:
+        """Handles units that are to be removed from troop."""
+        if unit in self.marines:
+            self.marines.remove(unit)
+        elif unit in self.tanks:
+            self.tanks.remove(unit)
+        elif unit in self.others:
+            self.others.remove(unit)
 
     @property
-    def wants_marines(self):
+    def wants_marines(self) -> int:
         """Return required amount of marines to satisfy capacity."""
-        return self.marines_capacity - len(self.marines) \
+        return max(self.marines_capacity - len(self.marines), 0) \
             if not self.under_attack else 0
 
     @property
-    def wants_tanks(self):
+    def wants_tanks(self) -> int:
         """Return required amount of tanks to satisfy capacity."""
-        return self.tanks_capacity - len(self.tanks) \
+        return max(self.tanks_capacity - len(self.tanks), 0) \
             if not self.under_attack else 0
+
+    @property
+    def has_enough(self) -> bool:
+        """Check if the capacity is satisfied for all unit types."""
+        return 0 >= self.wants_marines and 0 >= self.wants_tanks
 
 
 # All troops!
@@ -108,13 +105,19 @@ def create_troop(point: Point2D):
 # ZW
 def marine_seeks_troop(position: Point2D) -> Troop:
     """Find closest troop requiring a marine most."""
-    closest = None
-    distance = 0
+    closest = [None, None]
+    distance = [0, 0]
     for troop in troops:
-        if not closest or troop.target.dist(position) / max(troop.wants_marines, 0.1) < distance:
-            closest = troop
-            distance = troop.target.dist(position)
-    return closest
+        if troop.wants_marines > 0:
+            if not closest[0] or troop.target.dist(position) / troop.wants_marines < distance[0]:
+                closest[0] = troop
+                distance[0] = troop.target.dist(position)
+        else:
+            if not closest[1] or troop.target.dist(position) < distance[1]:
+                closest[1] = troop
+                distance[1] = troop.target.dist(position)
+
+    return closest[0] if closest[0] else closest[1]
 
 
 # ZW
@@ -135,5 +138,3 @@ def find_unit_troop(unit: Unit) -> Union[Troop, None]:
         if troop.has_unit(unit):
             return troop
     return None
-
-
