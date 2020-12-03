@@ -35,7 +35,7 @@ class Workplace:
     # ---------------
 
     max_number_of_barracks: int = 2
-    max_number_of_factories: int = 2
+    max_number_of_factories: int = 1
 
     under_attack: bool  # If workplace is under attack or not
 
@@ -55,7 +55,7 @@ class Workplace:
 
     def on_idle_my_unit(self, unit: Unit, bot: IDABot) -> None:
         """Called each time for a worker that is idle in this workplace."""
-        if unit in self.miners:
+        if unit in self.miners and self.miners:
             unit.right_click(random.choice(self.mineral_fields))
         elif unit in self.gasers:
             for refinery, gasers in self.refineries.items():
@@ -252,7 +252,6 @@ class Workplace:
     def build_factory(self, bot: IDABot) -> None:
         """Builds a barrack when necessary."""
         factory = UnitType(UNIT_TYPEID.TERRAN_FACTORY, bot)
-        factory_with_upgrade = UnitType(UNIT_TYPEID.TERRAN_FACTORYTECHLAB, bot)
 
         if can_afford(bot, factory) \
                 and len(self.factories) < self.max_number_of_factories \
@@ -260,20 +259,24 @@ class Workplace:
                 and not self.is_building_unittype(factory)\
                 and len(self.miners) > 5:
             location = self.building_location_finder(bot, factory)
-            # print(bot.currently_building(UNIT_TYPEID.TERRAN_BARRACKS))
-
             self.have_worker_construct(factory, location)
-            # print('building barrack')
+
+    def upgrade_factory(self, bot: IDABot, unit):
+        factory_techlab = UnitType(UNIT_TYPEID.TERRAN_FACTORYTECHLAB, bot)
+        unit.train(factory_techlab)
+        print("upgrade fact")
+
 
     def building_location_finder(self, bot: IDABot, unit_type) -> Point2D:
         """Finds a suitable location to build a unit of given type"""
         home_base = self.location.position
         home_base_2di = Point2DI(int(home_base.x), int(home_base.y))
-        location = bot.building_placer.get_build_location_near(home_base_2di,
-                                                               unit_type)
-        if bot.building_placer.can_build_here_with_spaces(location.x, location.y,
-                                                          unit_type, 5):
-            return location
+        if unit_type == UnitType(UNIT_TYPEID.TERRAN_FACTORY, bot):
+            return bot.building_placer.get_build_location_near(home_base_2di, unit_type, 40)
+        elif unit_type == UnitType(UNIT_TYPEID.TERRAN_BARRACKS, bot):
+            return bot.building_placer.get_build_location_near(home_base_2di, unit_type, 35)
+        elif unit_type == UnitType(UNIT_TYPEID.TERRAN_SUPPLYDEPOT, bot):
+            return bot.building_placer.get_build_location_near(home_base_2di, unit_type, 5)
         else:
             raise Exception("Found location is bad.")
 
