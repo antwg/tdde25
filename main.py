@@ -30,14 +30,13 @@ class MyAgent(ScaiBackbone):
         self.look_for_new_units()
         print_debug(self)
        # self.get_coords()
-        self.worker_do()
         for workplace in workplaces:
             workplace.on_step(self)
-        workplaces[-1].expansion(self)
         self.train_scv()
         self.train_marine()
         self.expansion()
         self.get_coords()
+        self.scout()
 
     def get_coords(self):
         """Prints position of all workers"""
@@ -57,10 +56,37 @@ class MyAgent(ScaiBackbone):
             return 'left'
 
     def scout(self):
-        if troops >= 2:
-            scout = workplaces[-1].get_scout
-            for base_location in BaseLocationManager.get_occupied_base_location(PLAYER_ENEMY):
-                scout.move
+        # if troops >= 2:
+        # scout = workplaces[-1].get_scout
+        if not scouts:
+            scout = random.choice(get_my_workers(self))
+            scouts.append(scout)
+            start_pos = scout.position
+            all_base_chords = []
+            for cords in deepcopy(choke_point_dict):
+               all_base_chords.append(cords)
+
+            if len(all_base_chords) > 0:
+                closest_base = self.closest_base(scout.position, all_base_chords)
+                if scout.position.dist(Point2D(closest_base.x, closest_base.y)) <= 5:
+                    scout.move(closest_base)
+                    print("scout moveing")
+                    all_base_chords.remove((closest_base.x, closest_base.y))
+            scout.move(start_pos)
+
+
+    def closest_base(self, pos: Point2D, locations):
+        """Checks the closest base_location to a position"""
+        closest = None
+        distance = 0
+        for base_chords in locations:
+            base = Point2D(base_chords[0], base_chords[1])
+            if not closest or distance > base.dist(pos):
+                closest = base
+                distance = base.dist(pos)
+
+        return closest
+
 
     def on_lost_my_unit(self, unit: Unit):
         """Called each time a unit is killed."""
@@ -86,7 +112,7 @@ class MyAgent(ScaiBackbone):
     def on_new_my_unit(self, unit: Unit):
         """Called each time a new unit is noticed."""
         self.train_marine()
-        self.defence()
+        # self.defence()
         # self.look_for_new_units()
 
         if unit.unit_type.is_building:
@@ -246,14 +272,6 @@ class MyAgent(ScaiBackbone):
 
     def choke_points(self, coordinates) -> Point2D:
         """Returns the appropriate choke point"""
-        choke_point_dict = {(59, 28): (52, 35), (125, 137): (127, 128),
-                            (58, 128): (67, 116), (125, 30): (119, 47),
-                            (92, 139): (99, 130), (25, 111): (44, 101),
-                            (26, 81): (30, 67), (86, 114): (93, 102),
-                            (91, 71): (88, 82), (93, 39): (85, 50),
-                            (126, 56): (108, 67), (65, 53): (69, 58),
-                            (125, 86): (121, 100), (26, 30): (23, 39),
-                            (26, 137): (33, 120)}
 
         return Point2D(choke_point_dict[coordinates][0],
                        choke_point_dict[coordinates][1])

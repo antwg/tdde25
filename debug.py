@@ -1,6 +1,7 @@
 import time
 from scai_backbone import *
 from workplace import *
+from armies import *
 
 def print_debug(bot: IDABot):
     # Skriver ut (< UnitType >  id: < id >  i: < enumereringsindex >)

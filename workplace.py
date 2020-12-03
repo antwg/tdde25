@@ -4,7 +4,6 @@ import math
 from library import *
 
 from funcs import *
-from armies import *
 
 refinery_TYPEID = [UNIT_TYPEID.TERRAN_REFINERY, UNIT_TYPEID.TERRAN_REFINERYRICH]
 
@@ -238,7 +237,7 @@ class Workplace:
         location = bot.building_placer.get_build_location_near(home_base_2di,
                                                                unit_type)
         if bot.building_placer.can_build_here_with_spaces(location.x, location.y,
-                                                          unit_type, 10):
+                                                          unit_type, 5):
             return location
         else:
             print("building not built")
