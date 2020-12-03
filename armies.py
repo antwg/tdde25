@@ -5,6 +5,7 @@ from library import *
 from scai_backbone import siege_tanks_TYPEIDS
 
 from workplace import *
+global bunker_marine
 
 
 # ZW
@@ -48,6 +49,22 @@ class Troop:
             return True
         else:
             return False
+
+    def build_bunker(self, bot: IDABot, location):  # AW
+        """Builds a supply depot when necessary."""
+        bunker = UnitType(UNIT_TYPEID.TERRAN_BUNKER, bot)
+        workplace = closest_workplace(location)
+
+        if can_afford(bot, bunker) \
+                and not currently_building(bot, UNIT_TYPEID.TERRAN_BUNKER)\
+                and bunker not in workplace.builders_targets.values():
+            position = bot.building_placer.get_build_location_near(
+                Point2DI(int(location.x), int(location.y)), bunker)
+            worker = workplace.get_suitable_builder()
+            if worker is not None:
+                worker.build(bunker, position)
+            else:
+                self.build_bunker(bot, location)
 
     def add(self, units: Union[Unit, Sequence[Unit]]) -> None:
         """Adds unit(s) to troop."""
@@ -138,3 +155,14 @@ def find_unit_troop(unit: Unit) -> Union[Troop, None]:
         if troop.has_unit(unit):
             return troop
     return None
+
+def closest_troop(pos: Point2D):
+    """Checks the closest troop to a position"""
+    closest = None
+    distance = 0
+    for troop in troops:
+        if not closest or distance > troop.target.dist(pos):
+            closest = troop
+            distance = troop.target.dist(pos)
+
+    return closest
