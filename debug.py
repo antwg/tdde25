@@ -102,6 +102,10 @@ def unit_assignment(bot: IDABot):
             for marine in troop.marines:
                 assignment[marine] = "defence"
 
+        for scout in scouts:
+            assignment[scout] = "scout"
+
+
     return assignment
 
 

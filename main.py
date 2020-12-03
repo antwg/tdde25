@@ -58,39 +58,6 @@ class MyAgent(ScaiBackbone):
         else:
             return 'left'
 
-    def scout(self):
-        # if troops >= 2:
-        # scout = workplaces[-1].get_scout
-        if not scouts:
-            scout = random.choice(get_my_workers(self))
-            scouts.append(scout)
-            start_pos = scout.position
-            all_base_chords = []
-            for cords in deepcopy(choke_point_dict):
-               all_base_chords.append(cords)
-
-            if len(all_base_chords) > 0:
-                closest_base = self.closest_base(scout.position, all_base_chords)
-                if scout.position.dist(Point2D(closest_base.x, closest_base.y)) <= 5:
-                    scout.move(closest_base)
-                    print("scout moveing")
-                    all_base_chords.remove((closest_base.x, closest_base.y))
-            scout.move(start_pos)
-
-
-    def closest_base(self, pos: Point2D, locations):
-        """Checks the closest base_location to a position"""
-        closest = None
-        distance = 0
-        for base_chords in locations:
-            base = Point2D(base_chords[0], base_chords[1])
-            if not closest or distance > base.dist(pos):
-                closest = base
-                distance = base.dist(pos)
-
-        return closest
-
-
     def on_lost_my_unit(self, unit: Unit):
         """Called each time a unit is killed."""
         # Try removing from troop if in any
@@ -212,6 +179,35 @@ class MyAgent(ScaiBackbone):
         for remembered_unit in temp_remember_these:
             # How to handle not found units?
             pass
+
+    # DP
+    def scout(self):
+        if len(troops) >= 1:
+            if not scouts:
+                workplaces[-1].get_scout()
+            if not all_base_chords:
+                for cords in choke_point_dict:
+                    all_base_chords.append(cords)
+
+            if len(all_base_chords) > 0:
+                scout = scouts[0]
+                closest_base = self.closest_base(scout.position, all_base_chords)
+                if scout.position.dist(Point2D(closest_base.x, closest_base.y)) <= 1.5 or\
+                        scout.is_idle:
+                    scout.move(closest_base)
+                    all_base_chords.remove((closest_base.x, closest_base.y))
+
+    def closest_base(self, pos: Point2D, locations):
+        """Checks the closest base_location to a position"""
+        closest = None
+        distance = 0
+        for base_chords in locations:
+            base = Point2D(base_chords[0], base_chords[1])
+            if not closest or distance > base.dist(pos):
+                closest = base
+                distance = base.dist(pos)
+
+        return closest
 
     # ZW
     def train_scv(self):

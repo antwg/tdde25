@@ -2,6 +2,8 @@ from typing import Union, Sequence, Dict
 import random
 import math
 from library import *
+from copy import deepcopy
+
 
 from funcs import *
 
