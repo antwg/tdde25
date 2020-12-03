@@ -8,6 +8,7 @@ from debug import *
 from extra import *
 from armies import *
 from workplace import *
+bunker_marine = []
 
 
 # ZW
@@ -163,6 +164,14 @@ class MyAgent(ScaiBackbone):
             troop = marine_seeks_troop(unit.position)
             if troop:
                 troop.add(unit)
+
+        elif unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_BUNKER:
+            troop = closest_troop(unit.position)
+            troop.add(unit)
+            for marine in troop.marines[:4]:
+                marine.right_click(unit)
+                global bunker_marine
+                bunker_marine += marine
 
         elif unit.unit_type.unit_typeid in [UNIT_TYPEID.TERRAN_SIEGETANK,
                                             UNIT_TYPEID.TERRAN_SIEGETANKSIEGED]:
@@ -339,6 +348,14 @@ class MyAgent(ScaiBackbone):
 
     def choke_points(self, coordinates) -> Point2D:
         """Returns the appropriate choke point"""
+        choke_point_dict = {(59, 28): (52, 35), (125, 137): (127, 128),
+                            (58, 128): (67, 116), (125, 30): (119, 47),
+                            (92, 139): (99, 130), (25, 111): (44, 101),
+                            (26, 81): (30, 67), (86, 114): (93, 102),
+                            (91, 71): (88, 82), (93, 39): (85, 50),
+                            (126, 56): (108, 67), (65, 53): (69, 58),
+                            (125, 86): (121, 100), (26, 30): (23, 39),
+                            (26, 137): (33, 120), (60, 96): (58, 83)}
 
         return Point2D(choke_point_dict[coordinates][0],
                        choke_point_dict[coordinates][1])
@@ -351,9 +368,11 @@ class MyAgent(ScaiBackbone):
         location = self.base_location_manager.get_next_expansion(PLAYER_SELF).\
             depot_position
 
-        if len(get_my_type_units(self, marines)) >= len(workplaces) * 8 \
+        if (len(get_my_type_units(self, marines)) + len(bunker_marine)
+            >= len(workplaces) * 8)\
                 and can_afford(self, command_center_type)\
-                and not currently_building(self, command_center):
+                and not currently_building(self, command_center)\
+                and closest_workplace(location).get_suitable_builder():
 
             workplace = closest_workplace(location)
             worker = workplace.get_suitable_worker_and_remove()
@@ -364,9 +383,12 @@ class MyAgent(ScaiBackbone):
                      self)
 
                 new_workplace.add(worker)
-                new_workplace.have_worker_construct(command_center_type, location)
+                new_workplace.have_worker_construct(command_center_type,
+                                                    location)
 
-                create_troop(self.choke_points((location.x, location.y)))
+            point = self.choke_points((location.x, location.y))
+            create_troop(point)
+            closest_troop(point).build_bunker(self, point)
 
 
 if __name__ == "__main__":
