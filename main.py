@@ -89,7 +89,6 @@ class MyAgent(ScaiBackbone):
         self.look_for_new_units()
 
         print_debug(self)
-        # self.get_coords()
 
         for workplace in workplaces:
             workplace.on_step(self)
@@ -188,8 +187,10 @@ class MyAgent(ScaiBackbone):
 
         if add_to_workplace:
             work = closest_workplace(unit.position)
+            print("fact")
             if work:
                 work.add(unit)
+                work.upgrade_factory(self, unit)
 
     def on_discover_unit(self, unit: Unit):
         """Called when a unit is discovered, even when new_my_unit."""
@@ -251,8 +252,7 @@ class MyAgent(ScaiBackbone):
             if len(all_base_chords) > 0:
                 scout = scouts[0]
                 closest_base = self.closest_base(scout.position, all_base_chords)
-                if scout.position.dist(Point2D(closest_base.x, closest_base.y)) <= 1.5 or\
-                        scout.is_idle:
+                if scout.is_idle or scout.position.dist(Point2D(closest_base.x, closest_base.y)) <= 1.5:
                     scout.move(closest_base)
                     all_base_chords.remove((closest_base.x, closest_base.y))
 
