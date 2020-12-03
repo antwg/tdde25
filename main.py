@@ -68,7 +68,7 @@ class MyAgent(ScaiBackbone):
         # Try removing from troop if in any
         troop = find_unit_troop(unit)
         if troop:
-            troop.member_lost(unit)
+            troop.remove(unit)
 
         # Remove minerals from workplace.miners_targets
         if unit.unit_type.unit_typeid in minerals_TYPEIDS:
@@ -105,24 +105,24 @@ class MyAgent(ScaiBackbone):
         elif unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_MARINE:
             troop = marine_seeks_troop(unit.position)
             if troop:
-                troop += unit
+                troop.add(unit)
 
         elif unit.unit_type.unit_typeid in [UNIT_TYPEID.TERRAN_SIEGETANK,
                                             UNIT_TYPEID.TERRAN_SIEGETANKSIEGED]:
             troop = tank_seeks_troop(unit.position)
             if troop:
-                troop += unit
+                troop.add(unit)
 
         elif unit.unit_type.unit_typeid in refineries_TYPEIDS:
             work = closest_workplace(unit.position)
             if work:
-                work += unit
+                work.add(unit)
                 # print("ref built")
 
         elif unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_BARRACKS:
             work = closest_workplace(unit.position)
             if work:
-                work += unit
+                work.add(unit)
 
         elif unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_COMMANDCENTER:
             # print("should be making a workplace")
@@ -131,12 +131,12 @@ class MyAgent(ScaiBackbone):
         elif unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_SCV:
             workplace = closest_workplace(unit.position)
             if workplace:
-                workplace += unit
+                workplace.add(unit)
                 
         elif unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_FACTORY:
             work = closest_workplace(unit.position)
             if work:
-                work += unit
+                work.add(unit)
 
     def on_discover_unit(self, unit: Unit):
         """Called when a unit is discovered, even when new_my_unit."""
@@ -288,7 +288,7 @@ class MyAgent(ScaiBackbone):
                     (self.base_location_manager.get_next_expansion(PLAYER_SELF),
                      self)
 
-                new_workplace += worker
+                new_workplace.add(worker)
                 new_workplace.have_worker_construct(command_center_type, location)
 
                 create_troop(self.choke_points((location.x, location.y)))
