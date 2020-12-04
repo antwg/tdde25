@@ -5,6 +5,7 @@ from library import *
 from scai_backbone import siege_tanks_TYPEIDS
 
 from workplace import *
+global bunker_marine
 
 
 # ZW
@@ -22,7 +23,7 @@ class Troop:
     marines_capacity: int = 8  # How many marines this troop is asking for
     tanks_capacity: int = 2    # How many tanks this troop is asking for
 
-    target_radius: int = 3  # How close a unit must be to a target to be there
+    target_radius: int = 7  # How close a unit must be to a target to be there
 
     # tanks_siege: List[Unit]   - All siege tanks in siegemode in this troop
 
@@ -34,7 +35,7 @@ class Troop:
     # These are functions triggered by different events. Most are
     # triggered by MyAgent
 
-    def __init__(self, position: Point2D):
+    def __init__(self, position: Point2D, is_attackers: bool = False):
         """Called when a new troop is being created. Note that no units are
         required for making a troop, rather it is why they need to be created.
         """
@@ -45,9 +46,13 @@ class Troop:
         self.tanks_siege = []
         self.bunkers = {}
         self.others = []
-        self.reached_target = []
+        self.not_reached_target = []
         self.under_attack = False
-        self.is_attackers = False
+        self.is_attackers = is_attackers
+
+        if is_attackers:
+            self.marines_capacity = 12
+            self.tanks_capacity = 4
 
         self.set_target(position)
 
@@ -55,18 +60,19 @@ class Troop:
         """Called each on_step() of IDABot."""
         if self.under_attack:
             pass
-        else:
-            if not self.bunkers:
+        elif not self.is_attackers:
+            if not self.bunkers.keys():
                 self.build_bunker(bot, self.target_pos)
 
     def on_idle(self, unit: Unit, bot: IDABot):
         """Called each time a member is idle."""
-        if unit not in self.reached_target:
+        if unit in self.not_reached_target:
             if self.nearby_target(unit):
                 self.on_member_reach_target(unit)
-                self.reached_target.append(unit)
+                self.not_reached_target.remove(unit)
             elif unit in self.tanks_siege:
-                unit.ability(ABILITY_ID.MORPH_UNSIEGE)
+                # TODO: HAVE SIEGE TANKS UNMORPH
+                # unit.ability(ABILITY_ID.MORPH_UNSIEGE)
                 self.tanks_siege.remove(unit)
             else:
                 self.unit_execute_order(unit)
@@ -74,7 +80,8 @@ class Troop:
     def on_member_reach_target(self, unit: Unit):
         """A member reaches target for first time."""
         if unit in self.tanks and unit not in self.tanks_siege:
-            unit.ability(ABILITY_ID.MORPH_SIEGEMODE)
+            # TODO: HAVE SIEGE TANKS MORPH
+            # unit.ability(ABILITY_ID.MORPH_SIEGEMODE)
             self.tanks_siege.append(unit)
         elif unit in self.marines:
             for bunker, occupants in self.bunkers.items():
@@ -141,8 +148,11 @@ class Troop:
                     self.tanks_siege.append(unit)
             elif unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_BUNKER:
                 self.bunkers[unit] = []
+                self.have_soldiers_enter(unit)
             else:
                 self.others.append(unit)
+
+            self.not_reached_target.append(unit)
 
     def remove(self, unit: Unit) -> None:
         """Handles units that are to be removed from troop."""
@@ -174,7 +184,7 @@ class Troop:
     def set_target(self, target: Union[Point2D, Unit]):
         """Sets target of troop."""
         self.__target = target
-        self.reached_target = []
+        self.not_reached_target = self.get_units()
 
         for bunker in self.bunkers:
             if not self.nearby_target(bunker):
@@ -191,15 +201,21 @@ class Troop:
         if can_afford(bot, bunker) \
                 and not currently_building(bot, UNIT_TYPEID.TERRAN_BUNKER)\
                 and bot.have_one(UNIT_TYPEID.TERRAN_BARRACKS) \
-                and not workplace.is_building_unittype(bunker):
+                and not workplace.is_building_unittype(bunker)\
+                and not self.bunkers:
             position = bot.building_placer.get_build_location_near(
                 location.to_i(), bunker)
             workplace.have_worker_construct(bunker, position)
 
     # ZW
-    def nearby_target(self, unit: Unit) -> bool:
+    def nearby_target(self, at: Union[Unit, Point2D]) -> bool:
         """Check if a unit is nearby target."""
-        return unit.position.dist(self.target_pos) <= self.target_radius
+        if isinstance(at, Unit):
+            return at.position.dist(self.target_pos) <= self.target_radius
+        elif isinstance(at, Point2D):
+            return at.dist(self.target_pos) <= self.target_radius
+        else:
+            raise Exception("Can't do that!")
 
     # AW
     def have_soldiers_enter(self, bunker: Unit) -> None:
@@ -210,6 +226,16 @@ class Troop:
 
     # ---------- PROPERTIES ----------
     # Values that are trivial calculations but important for the object
+
+    @property
+    def satisfied(self):
+        """Return True if the troop wants more units."""
+        return self.wants_marines <= 0 and self.wants_tanks <= 0
+
+    @property
+    def have_all_reached_target(self):
+        """Returns true if all members are close to target."""
+        return not self.not_reached_target
 
     @property
     def wants_marines(self) -> int:
@@ -238,59 +264,97 @@ class Troop:
 
 
 # All troops!
-troops = []
+defenders = []
+attackers = []
 
 
 # ZW
-def create_troop(point: Point2D):
-    """Create a new troop with given target."""
-    troops.append(Troop(point))
+def create_troop_defending(point: Point2D):
+    """Create a new troop with given target that are suppose to defend."""
+    defenders.append(Troop(point))
 
 
 # ZW
-def marine_seeks_troop(position: Point2D) -> Troop:
+def create_troop_attacking(point: Point2D):
+    """Creates a new troop with given target that are suppose to attack."""
+    attackers.append(Troop(point, True))
+
+
+# ZW
+def all_troops():
+    """Returns all troops."""
+    return attackers + defenders
+
+
+# ZW
+def marine_seeks_troop(position: Point2D) -> Union[Troop, None]:
     """Find closest troop requiring a marine most."""
-    closest = [None, None]
-    distance = [0, 0]
-    for troop in troops:
-        if troop.wants_marines > 0:
+    closest = [None, None, None]
+    distance = [0, 0, 0]
+
+    for troop in all_troops():
+        if troop.wants_marines > 0 and not troop.is_attackers:
             if not closest[0] or troop.target_pos.dist(position) / troop.wants_marines < distance[0]:
                 closest[0] = troop
                 distance[0] = troop.target_pos.dist(position)
-        else:
-            if not closest[1] or troop.target_pos.dist(position) < distance[1]:
+        elif troop.wants_marines > 0:
+            if not closest[1] or troop.target_pos.dist(position) / troop.wants_marines < distance[1]:
                 closest[1] = troop
                 distance[1] = troop.target_pos.dist(position)
+        else:
+            if not closest[2] or troop.target_pos.dist(position) < distance[2]:
+                closest[2] = troop
+                distance[2] = troop.target_pos.dist(position)
 
-    return closest[0] if closest[0] else closest[1]
+    return closest[0] if closest[0] else closest[1] if closest[1] else closest[2]
 
 
 # ZW
-def tank_seeks_troop(position: Point2D) -> Troop:
+def tank_seeks_troop(position: Point2D) -> Union[Troop, None]:
     """Find closest troop requiring a tank most."""
-    closest = None
-    distance = 0
-    for troop in troops:
-        if not closest or troop.target_pos.dist(position) / max(troop.wants_tanks, 0.1) < distance:
-            closest = troop
-            distance = troop.target_pos.dist(position)
-    return closest
+    closest = [None, None, None]
+    distance = [0, 0, 0]
+
+    for troop in all_troops():
+        if troop.wants_tanks > 0 and not troop.is_attackers:
+            if not closest[0] or troop.target_pos.dist(position) / troop.wants_tanks < distance[0]:
+                closest[0] = troop
+                distance[0] = troop.target_pos.dist(position)
+        elif troop.wants_tanks > 0:
+            if not closest[1] or troop.target_pos.dist(position) / troop.wants_tanks < distance[1]:
+                closest[1] = troop
+                distance[1] = troop.target_pos.dist(position)
+        else:
+            if not closest[2] or troop.target_pos.dist(position) < distance[2]:
+                closest[2] = troop
+                distance[2] = troop.target_pos.dist(position)
+
+    return closest[0] if closest[0] else closest[1] if closest[1] else closest[2]
+
+
+# ZW
+def bunker_seeks_troop(position: Point2D) -> Union[Troop, None]:
+    """Return suitable troop for bunker."""
+    for troop in all_troops():
+        if not troop.is_attackers and troop.nearby_target(position):
+            return troop
+    return None
 
 
 # ZW
 def find_unit_troop(unit: Unit) -> Union[Troop, None]:
     """Return the troop this unit is in. If not any then null."""
-    for troop in troops:
+    for troop in all_troops():
         if troop.has_unit(unit):
             return troop
     return None
 
 
-def closest_troop(pos: Point2D):
-    """Checks the closest troop to a position"""
+def closest_troop(pos: Point2D) -> Union[Troop, None]:
+    """Finds the closest troop to a position"""
     closest = None
     distance = 0
-    for troop in troops:
+    for troop in all_troops():
         if not closest or distance > troop.target_pos.dist(pos):
             closest = troop
             distance = troop.target_pos.dist(pos)

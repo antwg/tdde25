@@ -8,7 +8,6 @@ from debug import *
 from extra import *
 from armies import *
 from workplace import *
-bunker_marine = []
 
 
 # ZW
@@ -19,11 +18,16 @@ class MyAgent(ScaiBackbone):
         """Called on start up, passed from IDABot.on_game_start()."""
         ScaiBackbone.on_game_start(self)
         if self.side() == 'right':
-            create_troop(Point2D(119, 47))
+            create_troop_defending(Point2D(114, 46))
+            create_troop_attacking(Point2D(114, 46))
         else:
-            create_troop(Point2D(33, 120))
+            create_troop_defending(Point2D(37, 121))
+            create_troop_attacking(Point2D(37, 121))
         create_workplace(self.base_location_manager
                          .get_player_starting_base_location(PLAYER_SELF), self)
+
+        workplaces[0].max_number_of_barracks = 3
+        workplaces[0].max_number_of_factories = 2
 
         # self.debug_give_all_resources()
 
@@ -94,8 +98,10 @@ class MyAgent(ScaiBackbone):
         for workplace in workplaces:
             workplace.on_step(self)
 
-        for troop in troops:
+        for troop in all_troops():
             troop.on_step(self)
+            if troop.is_attackers and troop.satisfied and troop.have_all_reached_target:
+                troop.march_units(self.base_location_manager.get_player_starting_base_location(PLAYER_ENEMY).position)
 
         self.train_scv()
         if self.should_train_marines:
@@ -104,6 +110,7 @@ class MyAgent(ScaiBackbone):
             self.train_tank()
         self.expansion()
         # self.scout()
+
         
     def get_coords(self):
         """Prints position of all workers"""
@@ -171,9 +178,9 @@ class MyAgent(ScaiBackbone):
 
         # add marine to closest troop wanting tanks
         elif unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_BUNKER:
-            troop = closest_troop(unit.position)
-            troop.add(unit)
-            troop.have_soldiers_enter(unit)
+            troop = bunker_seeks_troop(unit.position)
+            if troop:
+                troop.add(unit)
 
         # add tank to closest troop wanting tanks
         elif unit.unit_type.unit_typeid in [UNIT_TYPEID.TERRAN_SIEGETANK,
@@ -192,7 +199,7 @@ class MyAgent(ScaiBackbone):
 
         # adds SCV to closest workplace wanting SCVs
         elif unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_SCV:
-            workplace = closest_workplace(unit.position)
+            workplace = scv_seeks_workplace(unit.position)
             if workplace:
                 workplace.add(unit)
 
@@ -269,7 +276,7 @@ class MyAgent(ScaiBackbone):
     # DP
     def scout(self):
         """Finds suitable scout (miner) that checks all base locations based on chords"""
-        if len(troops) >= 1:
+        if len(defenders) >= 1:
             if not scouts:
                 # Finds and adds scout to scouts
                 workplaces[-1].get_scout()
@@ -317,7 +324,7 @@ class MyAgent(ScaiBackbone):
                     count_needed -= 1
                     ccs.remove(trainer)
 
-    def currently_building(self, unit_type): #AW
+    def currently_building(self, unit_type): # AW
         """"Checks if a unit is currently being built"""
         # TODO: Rewrite/Delete?
         return any([unit.build_percentage < 1 for unit in
@@ -347,7 +354,7 @@ class MyAgent(ScaiBackbone):
         not_promised_marine = len(list(filter(
             lambda b: b.is_constructing(marine), self.get_my_units())))
 
-        for troop in troops:
+        for troop in all_troops():
             if troop.wants_marines - not_promised_marine > 0\
                     and can_afford(self, marine):
 
@@ -375,7 +382,7 @@ class MyAgent(ScaiBackbone):
             not_promised_tanks = len(list(filter(
                 lambda b: b.is_constructing(tank), self.get_my_units())))
 
-            for troop in troops:
+            for troop in all_troops():
                 if troop.wants_tanks - not_promised_tanks > 0:
 
                     factory = get_closest_unit(
@@ -406,27 +413,23 @@ class MyAgent(ScaiBackbone):
             unit_list.append(unit_tuple)
         return sorted(unit_list, key=lambda tup: tup[0])[0][1]
 
-    def squared_distance(self, p1, p2): #AW
+    def squared_distance(self, p1, p2):  # AW
         """Calculates the squared distance between 2 points"""
         return (p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2
 
-    def choke_points(self, coordinates) -> Point2D:
+    def choke_points(self, coordinates) -> Point2D:  # AW
         """Returns the appropriate choke point"""
-        choke_point_dict = {(59, 28): (52, 35), (125, 137): (127, 128),
-                            (58, 128): (67, 116), (125, 30): (119, 47),
-                            (92, 139): (99, 130), (25, 111): (44, 101),
-                            (26, 81): (30, 67), (86, 114): (93, 102),
-                            (91, 71): (88, 82), (93, 39): (85, 50),
-                            (126, 56): (108, 67), (65, 53): (69, 58),
-                            (125, 86): (121, 100), (26, 30): (23, 39),
-                            (26, 137): (33, 120), (60, 96): (58, 83)}
-
         return Point2D(choke_point_dict[coordinates][0],
                        choke_point_dict[coordinates][1])
 
+    def troops_full(self):  # AW
+        """Returns true if all troops are full"""
+        for troop in troops:
+            if troop.wants_marines <= 1:
+                return True
+
     def expansion(self):  # AW
         """Builds new command center when needed"""
-        marines = UNIT_TYPEID.TERRAN_MARINE
         command_center = UNIT_TYPEID.TERRAN_COMMANDCENTER
         command_center_type = UnitType(UNIT_TYPEID.TERRAN_COMMANDCENTER, self)
         location = self.base_location_manager.get_next_expansion(PLAYER_SELF).\
@@ -454,7 +457,7 @@ class MyAgent(ScaiBackbone):
                                                     location)
 
             point = self.choke_points((location.x, location.y))
-            create_troop(point)
+            create_troop_defending(point)
 
 
 if __name__ == "__main__":
