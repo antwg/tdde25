@@ -1,4 +1,5 @@
-from typing import Iterator, List, Optional
+from math import ceil, floor
+from typing import Iterator, List, Optional, Union
 
 from library import *
 
@@ -169,6 +170,50 @@ def builder_currently_building(bot: IDABot, builder):
 
 
 def currently_building(bot:IDABot, unit_type): #AW
-    """"Checks if a unit is currently being built"""
-    return any([unit.build_percentage < 1 for unit in
+    """Checks if a unit is currently being built"""
+    return any([not unit.is_completed for unit in
                 get_my_type_units(bot, unit_type)])
+
+
+def building_location_finder(bot: IDABot, anchor: Point2DI, size: int, ut: UnitType) -> Union[Point2D, None]:
+
+    return bot.building_placer.get_build_location_near(anchor, ut, size).to_f()
+
+    check = 20
+    anchor = anchor.to_f() - Point2D(check//2, check//2)
+
+    points = sorted([Point2D(x, y) for x in range(check) for y in range(check)],
+                    key=lambda p: p.squared_dist(Point2D(check//2, check//2)))
+
+    for building in filter(lambda unit: unit.unit_type.is_building or unit.owner != bot.id, bot.get_all_units()):
+        i = 0
+        while i < len(points):
+            p = points[i]
+            if p.x - building.radius - size/2 <= building.position.x <= p.x + size/2 + building.radius \
+                    and p.y - building.radius - size/2 <= building.position.y <= p.y + size/2 + building.radius:
+                points.pop(i)
+            else:
+                i += 1
+
+    while points:
+        point = anchor + points.pop(0) - Point2D(size//2, size//2)
+        can_build = True
+        for y in range(2*(size//2)):
+            for x in range(2*(size//2)):
+                if not bot.map_tools.is_buildable(round(point.x) + x, round(point.y) + y):
+                    can_build = False
+                    break
+
+            if not can_build:
+                break
+
+        if can_build:
+            return point
+        else:
+            points = list(filter(
+                lambda p: not (point.x <= p.x + anchor.x <= point.x + size
+                               and point.y <= p.y + anchor.y <= point.y + size),
+                points
+            ))
+
+    return None

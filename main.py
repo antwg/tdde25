@@ -8,6 +8,7 @@ from debug import *
 from extra import *
 from armies import *
 from workplace import *
+bunker_marine = []
 
 
 # ZW
@@ -24,9 +25,67 @@ class MyAgent(ScaiBackbone):
         create_workplace(self.base_location_manager
                          .get_player_starting_base_location(PLAYER_SELF), self)
 
+        # self.debug_give_all_resources()
+
+        self.points = []
+
     def on_step(self):
         """Called each cycle, passed from IDABot.on_step()."""
         ScaiBackbone.on_step(self)
+        #
+        # sd = UnitType(UNIT_TYPEID.TERRAN_BARRACKS, self)
+        # sds = get_my_type_units(self, UNIT_TYPEID.TERRAN_SUPPLYDEPOT)
+        #
+        # if not currently_building(self, UNIT_TYPEID.TERRAN_BARRACKS) and any(map(lambda s: s.is_completed, sds)):
+        #     for unit in self.get_my_units():
+        #         if unit.unit_type.is_worker:
+        #             unit.build(sd, building_location_finder(self, self.start_location.to_i(), 7, sd).to_i())
+        #             self.points = []
+        #             break
+        #
+        # if not self.points:
+        #     for i in range(10):
+        #         self.points.append(building_location_finder(self, self.start_location.to_i(), i, sd))
+        #
+        # for i in range(len(self.points)):
+        #     if not self.points[i]:
+        #         continue
+        #
+        #     self.map_tools.draw_box(
+        #         self.points[i] - Point2D(i/2, i/2),
+        #         self.points[i] + Point2D(i/2, i/2),
+        #         [Color.WHITE, Color.YELLOW, Color.BLUE, Color.GREEN, Color.RED, Color.BLACK, Color.GRAY, Color.PURPLE, Color.TEAL, Color.WHITE][i]
+        #     )
+        #
+        # dist = 1
+        # if not self.point2:
+        #     self.point2 = building_location_finder(self, self.start_location.to_i(), dist, UnitType(UNIT_TYPEID.TERRAN_BARRACKS, self))
+        # else:
+        #     self.map_tools.draw_box(
+        #         self.point2 - Point2D(dist/2, dist/2),
+        #         self.point2 + Point2D(dist/2, dist/2),
+        #         Color.RED
+        #     )
+        #
+        # dist = 1
+        # if not self.point2:
+        #     self.point2 = building_location_finder(self, self.start_location.to_i(), dist, UnitType(UNIT_TYPEID.TERRAN_BARRACKS, self))
+        # else:
+        #     self.map_tools.draw_box(
+        #         self.point2 - Point2D(dist/2, dist/2),
+        #         self.point2 + Point2D(dist/2, dist/2),
+        #         Color.RED
+        #     )
+
+        #
+        # for unit in self.get_my_units():
+        #     if unit.unit_type.is_building:
+        #         self.map_tools.draw_box(
+        #             unit.position - Point2D(unit.radius-0.28, unit.radius-0.28),
+        #             unit.position + Point2D(unit.radius-0.28, unit.radius-0.28)
+        #         )
+
+        # return
 
         self.look_for_new_units()
 
@@ -79,6 +138,9 @@ class MyAgent(ScaiBackbone):
         if unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_BARRACKS:
             self.train_marine()
 
+        if find_unit_troop(unit):
+            find_unit_troop(unit).on_idle(unit, self)
+
         if unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_SCV:
             for workplace in workplaces:
                 if workplace.has_unit(unit):
@@ -88,6 +150,8 @@ class MyAgent(ScaiBackbone):
         """Called each time a new unit is noticed."""
 
         # Places building in right workplace (base location)
+        add_to_workplace = False
+
         if unit.unit_type.is_building:
             for workplace in workplaces:
                 if workplace.has_build_target(unit):
@@ -105,23 +169,28 @@ class MyAgent(ScaiBackbone):
                 troop.add(unit)
 
         # add marine to closest troop wanting tanks
+        elif unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_BUNKER:
+            troop = closest_troop(unit.position)
+            troop.add(unit)
+            for marine in troop.marines[:4]:
+                marine.right_click(unit)
+                global bunker_marine
+                bunker_marine += marine
+
+        # add tank to closest troop wanting tanks
         elif unit.unit_type.unit_typeid in [UNIT_TYPEID.TERRAN_SIEGETANK,
                                             UNIT_TYPEID.TERRAN_SIEGETANKSIEGED]:
             troop = tank_seeks_troop(unit.position)
             if troop:
                 troop.add(unit)
 
-        # adds refinery to workplace where ref is built
+        # adds refinery to workplace at the end
         elif unit.unit_type.unit_typeid in refineries_TYPEIDS:
-            work = closest_workplace(unit.position)
-            if work:
-                work.add(unit)
+            add_to_workplace = True
 
-        # adds barracks to workplace
+        # adds barracks to workplace at the end
         elif unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_BARRACKS:
-            work = closest_workplace(unit.position)
-            if work:
-                work.add(unit)
+            add_to_workplace = True
 
         # adds SCV to closest workplace wanting SCVs
         elif unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_SCV:
@@ -129,8 +198,21 @@ class MyAgent(ScaiBackbone):
             if workplace:
                 workplace.add(unit)
 
-        # adds factory to workplace, then tries to build techlab
+        # add commandcenter to workplace at the end
+        elif unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_COMMANDCENTER:
+            add_to_workplace = True
+
+        # add scv to workplace at the end
+        elif unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_SCV:
+            add_to_workplace = True
+
+        # adds factory to workplace, then tries to build techlab        
         elif unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_FACTORY:
+            add_to_workplace = True
+
+        # if add_to_workplace is true from other if statments, add building to workplace.
+        # also upgrades factory if possible (only possible when unit is factory)
+        if add_to_workplace:
             work = closest_workplace(unit.position)
             if work:
                 work.add(unit)
@@ -161,10 +243,6 @@ class MyAgent(ScaiBackbone):
         """Find units that has not been noticed by the bot."""
         temp_remember_these = self.remember_these.copy()
         for unit in self.get_all_units():
-            # If idle call on_idle_unit()
-            if unit.is_idle and unit.owner == self.id:
-                self.on_idle_my_unit(unit)
-
             if unit not in temp_remember_these:
                 if unit.is_completed and unit.is_alive and unit.is_valid \
                         and self.map_tools.is_explored(unit.position):
@@ -179,6 +257,11 @@ class MyAgent(ScaiBackbone):
                         self.on_lost_my_unit(unit)
                     self.on_lost_unit(unit)
                     self.remember_these.remove(unit)
+
+            # If idle call on_idle_unit()
+            if unit.is_idle and unit.owner == self.id:
+                self.on_idle_my_unit(unit)
+
         for remembered_unit in temp_remember_these:
             # How to handle not found units?
             pass
@@ -287,6 +370,14 @@ class MyAgent(ScaiBackbone):
 
     def choke_points(self, coordinates) -> Point2D:
         """Returns the appropriate choke point"""
+        choke_point_dict = {(59, 28): (52, 35), (125, 137): (127, 128),
+                            (58, 128): (67, 116), (125, 30): (119, 47),
+                            (92, 139): (99, 130), (25, 111): (44, 101),
+                            (26, 81): (30, 67), (86, 114): (93, 102),
+                            (91, 71): (88, 82), (93, 39): (85, 50),
+                            (126, 56): (108, 67), (65, 53): (69, 58),
+                            (125, 86): (121, 100), (26, 30): (23, 39),
+                            (26, 137): (33, 120), (60, 96): (58, 83)}
 
         return Point2D(choke_point_dict[coordinates][0],
                        choke_point_dict[coordinates][1])
@@ -299,9 +390,11 @@ class MyAgent(ScaiBackbone):
         location = self.base_location_manager.get_next_expansion(PLAYER_SELF).\
             depot_position
 
-        if len(get_my_type_units(self, marines)) >= len(workplaces) * 8 \
+        if (len(get_my_type_units(self, marines)) + len(bunker_marine)
+            >= len(workplaces) * 8)\
                 and can_afford(self, command_center_type)\
-                and not currently_building(self, command_center):
+                and not currently_building(self, command_center)\
+                and closest_workplace(location).get_suitable_builder():
 
             workplace = closest_workplace(location)
             worker = workplace.get_suitable_worker_and_remove()
@@ -312,9 +405,12 @@ class MyAgent(ScaiBackbone):
                      self)
 
                 new_workplace.add(worker)
-                new_workplace.have_worker_construct(command_center_type, location)
+                new_workplace.have_worker_construct(command_center_type,
+                                                    location)
 
-                create_troop(self.choke_points((location.x, location.y)))
+            point = self.choke_points((location.x, location.y))
+            create_troop(point)
+            closest_troop(point).build_bunker(self, point)
 
 
 if __name__ == "__main__":
