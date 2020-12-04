@@ -43,8 +43,6 @@ class MyAgent(ScaiBackbone):
 
         for troop in all_troops():
             troop.on_step(self)
-            if troop.is_attackers and troop.satisfied and troop.have_all_reached_target:
-                troop.march_units(self.base_location_manager.get_player_starting_base_location(PLAYER_ENEMY).position)
 
         self.train_scv()
         if self.should_train_marines:
@@ -54,7 +52,6 @@ class MyAgent(ScaiBackbone):
         self.expansion()
         # self.scout()
 
-        
     def get_coords(self):
         """Prints position of all workers"""
         for unit in self.get_my_units():
@@ -191,7 +188,7 @@ class MyAgent(ScaiBackbone):
         """Called when a unit is lost, even when lost_my_unit."""
         if unit.unit_type.unit_typeid in minerals_TYPEIDS:
             for workplace in workplaces:
-                if workplace.location.contains_position(unit.position):
+                if unit in workplace.mineral_fields:
                     workplace.mineral_fields.remove(unit)
 
     remember_these: List[Unit] = []
@@ -204,25 +201,25 @@ class MyAgent(ScaiBackbone):
             if unit not in temp_remember_these:
                 if unit.is_completed and unit.is_alive and unit.is_valid \
                         and self.map_tools.is_explored(unit.position):
+                    self.remember_these.append(unit)
                     if unit.owner == self.id:
                         self.on_new_my_unit(unit)
                     self.on_discover_unit(unit)
-                self.remember_these.append(unit)
 
             else:
-                temp_remember_these.remove(unit)
-                if not unit.is_completed or not unit.is_alive or not unit.is_valid:
-                    if unit.owner == self.id:
-                        self.on_lost_my_unit(unit)
-                    self.on_lost_unit(unit)
-                    self.remember_these.remove(unit)
-
-            # If idle call on_idle_unit()
-            if unit.is_idle and unit.owner == self.id:
-                self.on_idle_my_unit(unit)
+                if unit.is_completed and unit.is_alive and unit.is_valid:
+                    temp_remember_these.remove(unit)
+                    # If idle call on_idle_unit()
+                    if unit.is_idle and unit.owner == self.id:
+                        self.on_idle_my_unit(unit)
 
         for remembered_unit in temp_remember_these:
-            pass
+            if not(remembered_unit.is_completed and remembered_unit.is_alive
+                   and remembered_unit.is_valid):
+                if remembered_unit.owner == self.id:
+                    self.on_lost_my_unit(remembered_unit)
+                self.on_lost_unit(remembered_unit)
+                self.remember_these.remove(remembered_unit)
 
     # DP
     def scout(self):

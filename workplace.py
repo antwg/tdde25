@@ -383,6 +383,9 @@ class Workplace:
             if unit in self.factories:
                 self.factories.remove(unit)
 
+            if unit in self.command_centers:
+                self.command_centers.remove(unit)
+
     # DP
     def add_refinery(self, refinery) -> None:
         """Adds a refinery to the workplace (needs to be finished)."""
