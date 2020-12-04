@@ -5,6 +5,7 @@ from library import *
 from scai_backbone import siege_tanks_TYPEIDS
 
 from workplace import *
+global bunker_marine
 
 
 # ZW

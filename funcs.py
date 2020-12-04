@@ -85,7 +85,8 @@ def get_my_type_units(bot: IDABot, searched_type: UnitTypeID):
 # DP
 def get_my_geysers(bot: IDABot):
     """Returns list of all geysers player has access to"""
-    base_locations = bot.base_location_manager.get_occupied_base_locations(PLAYER_SELF)
+    base_locations = bot.base_location_manager.get_occupied_base_locations\
+        (PLAYER_SELF)
     geysers_base_list = []
     gey_list = []
     for base in base_locations:
@@ -142,13 +143,14 @@ def get_refinery(bot: IDABot, geyser: Unit) -> Optional[Unit]:
         return (p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2
 
     for unit in bot.get_my_units():
-        if unit.unit_type.is_refinery and squared_distance(unit.position, geyser.position) < 1:
+        if unit.unit_type.is_refinery and squared_distance(unit.position,
+                                                           geyser.position) < 1:
             return unit
 
     return None
 
 
-def currently_building(bot: IDABot, unit_type): #AW
+def currently_building(bot: IDABot, unit_type):  # AW
     """"Checks if a unit is being built"""
     value = 0
     for unit in bot.get_my_units():
@@ -169,7 +171,7 @@ def builder_currently_building(bot: IDABot, builder):
     return False
 
 
-def currently_building(bot:IDABot, unit_type): #AW
+def currently_building(bot:IDABot, unit_type):  # AW
     """Checks if a unit is currently being built"""
     return any([not unit.is_completed for unit in
                 get_my_type_units(bot, unit_type)])
@@ -185,12 +187,16 @@ def building_location_finder(bot: IDABot, anchor: Point2DI, size: int, ut: UnitT
     points = sorted([Point2D(x, y) for x in range(check) for y in range(check)],
                     key=lambda p: p.squared_dist(Point2D(check//2, check//2)))
 
-    for building in filter(lambda unit: unit.unit_type.is_building or unit.owner != bot.id, bot.get_all_units()):
+    for building in filter(lambda unit: unit.unit_type.is_building
+                           or unit.owner != bot.id,
+                           bot.get_all_units()):
         i = 0
         while i < len(points):
             p = points[i]
-            if p.x - building.radius - size/2 <= building.position.x <= p.x + size/2 + building.radius \
-                    and p.y - building.radius - size/2 <= building.position.y <= p.y + size/2 + building.radius:
+            if p.x - building.radius - size/2 <= building.position.x <= p.x\
+                    + size/2 + building.radius \
+                    and p.y - building.radius - size/2 <= building.position.y\
+                    <= p.y + size/2 + building.radius:
                 points.pop(i)
             else:
                 i += 1
@@ -200,7 +206,8 @@ def building_location_finder(bot: IDABot, anchor: Point2DI, size: int, ut: UnitT
         can_build = True
         for y in range(2*(size//2)):
             for x in range(2*(size//2)):
-                if not bot.map_tools.is_buildable(round(point.x) + x, round(point.y) + y):
+                if not bot.map_tools.is_buildable(round(point.x) + x,
+                                                  round(point.y) + y):
                     can_build = False
                     break
 
