@@ -11,7 +11,7 @@ def has_addon(bot: IDABot, candidate: Unit, addon_type: UnitType):
     for unit in bot.get_my_units():
         if unit.unit_type.is_addon and unit.is_alive and unit.is_completed \
                 and unit.unit_type == addon_type \
-                and unit.position.distance(candidate.position) < 3:
+                and unit.position.dist(candidate.position) < 3:
             return True
 
     return False
