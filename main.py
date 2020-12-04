@@ -100,8 +100,6 @@ class MyAgent(ScaiBackbone):
 
         for troop in all_troops():
             troop.on_step(self)
-            if troop.is_attackers and troop.satisfied and troop.have_all_reached_target:
-                troop.march_units(self.base_location_manager.get_player_starting_base_location(PLAYER_ENEMY).position)
 
         self.train_scv()
         if self.should_train_marines:
@@ -111,7 +109,6 @@ class MyAgent(ScaiBackbone):
         self.expansion()
         # self.scout()
 
-        
     def get_coords(self):
         """Prints position of all workers"""
         for unit in self.get_my_units():
@@ -240,7 +237,7 @@ class MyAgent(ScaiBackbone):
         """Called when a unit is lost, even when lost_my_unit."""
         if unit.unit_type.unit_typeid in minerals_TYPEIDS:
             for workplace in workplaces:
-                if workplace.location.contains_position(unit.position):
+                if unit in workplace.mineral_fields:
                     workplace.mineral_fields.remove(unit)
 
     remember_these: List[Unit] = []
@@ -252,26 +249,25 @@ class MyAgent(ScaiBackbone):
             if unit not in temp_remember_these:
                 if unit.is_completed and unit.is_alive and unit.is_valid \
                         and self.map_tools.is_explored(unit.position):
+                    self.remember_these.append(unit)
                     if unit.owner == self.id:
                         self.on_new_my_unit(unit)
                     self.on_discover_unit(unit)
-                self.remember_these.append(unit)
 
             else:
-                temp_remember_these.remove(unit)
-                if not unit.is_completed or not unit.is_alive or not unit.is_valid:
-                    if unit.owner == self.id:
-                        self.on_lost_my_unit(unit)
-                    self.on_lost_unit(unit)
-                    self.remember_these.remove(unit)
-
-            # If idle call on_idle_unit()
-            if unit.is_idle and unit.owner == self.id:
-                self.on_idle_my_unit(unit)
+                if unit.is_completed and unit.is_alive and unit.is_valid:
+                    temp_remember_these.remove(unit)
+                    # If idle call on_idle_unit()
+                    if unit.is_idle and unit.owner == self.id:
+                        self.on_idle_my_unit(unit)
 
         for remembered_unit in temp_remember_these:
-            # How to handle not found units?
-            pass
+            if not(remembered_unit.is_completed and remembered_unit.is_alive
+                   and remembered_unit.is_valid):
+                if remembered_unit.owner == self.id:
+                    self.on_lost_my_unit(remembered_unit)
+                self.on_lost_unit(remembered_unit)
+                self.remember_these.remove(remembered_unit)
 
     # DP
     def scout(self):
@@ -424,7 +420,7 @@ class MyAgent(ScaiBackbone):
 
     def troops_full(self):  # AW
         """Returns true if all troops are full"""
-        for troop in troops:
+        for troop in all_troops():
             if troop.wants_marines <= 1:
                 return True
 
@@ -435,8 +431,11 @@ class MyAgent(ScaiBackbone):
         location = self.base_location_manager.get_next_expansion(PLAYER_SELF).\
             depot_position
 
-        if (len(get_my_type_units(self, marines))
-            >= len(workplaces) * 8)\
+        tot_marines = 0
+        for troop in all_troops():
+            tot_marines += len(troop.marines)
+
+        if (tot_marines >= len(workplaces) * 8) \
                 and can_afford(self, command_center_type)\
                 and not currently_building(self, command_center)\
                 and closest_workplace(location).get_suitable_builder():
