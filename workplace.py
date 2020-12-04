@@ -26,6 +26,7 @@ class Workplace:
     builders: List[Unit]  # Workers who construct
 
     # Buildings:
+    command_centers: List[Unit]  # All command centers (probably just one)
     refineries: Dict[Unit, List[Unit]]  # The list contains all its gas collectors
     barracks: List[Unit]  # All barracks
     factories: List[Unit]  # All factories

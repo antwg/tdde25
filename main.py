@@ -25,9 +25,67 @@ class MyAgent(ScaiBackbone):
         create_workplace(self.base_location_manager
                          .get_player_starting_base_location(PLAYER_SELF), self)
 
+        # self.debug_give_all_resources()
+
+        self.points = []
+
     def on_step(self):
         """Called each cycle, passed from IDABot.on_step()."""
         ScaiBackbone.on_step(self)
+        #
+        # sd = UnitType(UNIT_TYPEID.TERRAN_BARRACKS, self)
+        # sds = get_my_type_units(self, UNIT_TYPEID.TERRAN_SUPPLYDEPOT)
+        #
+        # if not currently_building(self, UNIT_TYPEID.TERRAN_BARRACKS) and any(map(lambda s: s.is_completed, sds)):
+        #     for unit in self.get_my_units():
+        #         if unit.unit_type.is_worker:
+        #             unit.build(sd, building_location_finder(self, self.start_location.to_i(), 7, sd).to_i())
+        #             self.points = []
+        #             break
+        #
+        # if not self.points:
+        #     for i in range(10):
+        #         self.points.append(building_location_finder(self, self.start_location.to_i(), i, sd))
+        #
+        # for i in range(len(self.points)):
+        #     if not self.points[i]:
+        #         continue
+        #
+        #     self.map_tools.draw_box(
+        #         self.points[i] - Point2D(i/2, i/2),
+        #         self.points[i] + Point2D(i/2, i/2),
+        #         [Color.WHITE, Color.YELLOW, Color.BLUE, Color.GREEN, Color.RED, Color.BLACK, Color.GRAY, Color.PURPLE, Color.TEAL, Color.WHITE][i]
+        #     )
+        #
+        # dist = 1
+        # if not self.point2:
+        #     self.point2 = building_location_finder(self, self.start_location.to_i(), dist, UnitType(UNIT_TYPEID.TERRAN_BARRACKS, self))
+        # else:
+        #     self.map_tools.draw_box(
+        #         self.point2 - Point2D(dist/2, dist/2),
+        #         self.point2 + Point2D(dist/2, dist/2),
+        #         Color.RED
+        #     )
+        #
+        # dist = 1
+        # if not self.point2:
+        #     self.point2 = building_location_finder(self, self.start_location.to_i(), dist, UnitType(UNIT_TYPEID.TERRAN_BARRACKS, self))
+        # else:
+        #     self.map_tools.draw_box(
+        #         self.point2 - Point2D(dist/2, dist/2),
+        #         self.point2 + Point2D(dist/2, dist/2),
+        #         Color.RED
+        #     )
+
+        #
+        # for unit in self.get_my_units():
+        #     if unit.unit_type.is_building:
+        #         self.map_tools.draw_box(
+        #             unit.position - Point2D(unit.radius-0.28, unit.radius-0.28),
+        #             unit.position + Point2D(unit.radius-0.28, unit.radius-0.28)
+        #         )
+
+        # return
 
         self.look_for_new_units()
 
@@ -79,6 +137,9 @@ class MyAgent(ScaiBackbone):
         if unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_BARRACKS:
             self.train_marine()
 
+        if find_unit_troop(unit):
+            find_unit_troop(unit).on_idle(unit, self)
+
         if unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_SCV:
             for workplace in workplaces:
                 if workplace.has_unit(unit):
@@ -87,6 +148,8 @@ class MyAgent(ScaiBackbone):
     def on_new_my_unit(self, unit: Unit):
         """Called each time a new unit is noticed."""
         # print("new unit:", unit)
+
+        add_to_workplace = False
 
         if unit.unit_type.is_building:
             for workplace in workplaces:
@@ -117,26 +180,21 @@ class MyAgent(ScaiBackbone):
                 troop.add(unit)
 
         elif unit.unit_type.unit_typeid in refineries_TYPEIDS:
-            work = closest_workplace(unit.position)
-            if work:
-                work.add(unit)
-                # print("ref built")
+            add_to_workplace = True
 
         elif unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_BARRACKS:
-            work = closest_workplace(unit.position)
-            if work:
-                work.add(unit)
+            add_to_workplace = True
 
         elif unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_COMMANDCENTER:
-            # print("should be making a workplace")
-            pass
+            add_to_workplace = True
 
         elif unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_SCV:
-            workplace = closest_workplace(unit.position)
-            if workplace:
-                workplace.add(unit)
+            add_to_workplace = True
                 
         elif unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_FACTORY:
+            add_to_workplace = True
+
+        if add_to_workplace:
             work = closest_workplace(unit.position)
             print("fact")
             if work:
@@ -168,10 +226,6 @@ class MyAgent(ScaiBackbone):
         """Find units that has not been noticed by the bot."""
         temp_remember_these = self.remember_these.copy()
         for unit in self.get_all_units():
-            # If idle call on_idle_unit()
-            if unit.is_idle and unit.owner == self.id:
-                self.on_idle_my_unit(unit)
-
             if unit not in temp_remember_these:
                 if unit.is_completed and unit.is_alive and unit.is_valid \
                         and self.map_tools.is_explored(unit.position):
@@ -186,6 +240,11 @@ class MyAgent(ScaiBackbone):
                         self.on_lost_my_unit(unit)
                     self.on_lost_unit(unit)
                     self.remember_these.remove(unit)
+
+            # If idle call on_idle_unit()
+            if unit.is_idle and unit.owner == self.id:
+                self.on_idle_my_unit(unit)
+
         for remembered_unit in temp_remember_these:
             # How to handle not found units?
             pass
