@@ -5,8 +5,7 @@ from armies import *
 
 
 def print_debug(bot: IDABot):
-    # Skriver ut (< UnitType >  id: < id >  i: < enumereringsindex >)
-    # för alla egna eneheter och resurser
+    """Debugger that gets called on_step, prints out wanted debug"""
 
     # print_debug_my_units(self)
     # print_debug_minerals_near_base(self)
@@ -79,7 +78,7 @@ def print_unit_overview(bot: IDABot):
 
     # DP
 def unit_assignment(bot: IDABot):
-    """Creates dictionary of unit and assignment, for the class Workplace"""
+    """Creates dictionary of unit and assignment, from the class Workplace"""
     assignment = {}
 
     for workplace in workplaces:
@@ -101,6 +100,8 @@ def unit_assignment(bot: IDABot):
         for troop in troops:
             for marine in troop.marines:
                 assignment[marine] = "defence"
+            for tank in troop.tanks:
+                assignment[tank] = "defence"
 
         for scout in scouts:
             assignment[scout] = "scout"
@@ -132,6 +133,7 @@ def get_coords(bot: IDABot):
 
 # ZW
 def remove_this_debug(bot: IDABot):
+    """Testing to see how the APIs building functions work"""
     building = UnitType(UNIT_TYPEID.TERRAN_COMMANDCENTER, bot)
     size_x = building.tile_width
     size_y = building.tile_height

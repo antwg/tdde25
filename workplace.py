@@ -35,6 +35,7 @@ class Workplace:
     others: List[Unit]  # All other units in this workplace
     # ---------------
 
+    # Max number of buildings per workplace (base location)
     max_number_of_barracks: int = 2
     max_number_of_factories: int = 1
 
@@ -48,7 +49,6 @@ class Workplace:
     def on_step(self, bot: IDABot) -> None:
         """Called each on_Step() of IDABot."""
         self.update_workers(bot)
-
         self.build_supply_depot(bot)
         self.build_barrack(bot)
         self.build_factory(bot)
@@ -116,7 +116,6 @@ class Workplace:
         """Adds a miner and handles necessary operations."""
         if worker.has_target and worker.target not in self.mineral_fields:
             worker.stop()
-        # print(self.str_unit(worker), ": miner added")
         self.miners.append(worker)
 
     # ZW
@@ -129,14 +128,12 @@ class Workplace:
     def add_gaser(self, worker: Unit, refinery: Unit) -> None:
         """Adds a gas collector and handles necessary operations."""
         worker.stop()
-        # print(self.str_unit(worker), ": gaser added")
         self.gasers.append(worker)
         self.refineries[refinery].append(worker)
 
     # ZW
     def remove_gaser(self, worker: Unit) -> None:
         """Removes a gas collector and handles necessary operations."""
-        # print(self.str_unit(worker), ": gaser removed")
         self.gasers.remove(worker)
         for refinery, gasers in self.refineries.items():
             if worker in gasers:
@@ -145,13 +142,11 @@ class Workplace:
     # ZW
     def add_builder(self, worker: Unit) -> None:
         """Adds a builder and handles necessary operations."""
-        # print(self.str_unit(worker), ": builder added")
         self.builders.append(worker)
 
     # ZW
     def remove_builder(self, worker: Unit) -> None:
         """Removes a builder and handles necessary operations."""
-        # print(self.str_unit(worker), ": builder removed")
         self.builders.remove(worker)
         if worker in self.builders_targets:
             del self.builders_targets[worker]
@@ -263,10 +258,7 @@ class Workplace:
                 and len(self.miners) > 5:
 
             location = self.building_location_finder(bot, barrack)
-            # print(bot.currently_building(UNIT_TYPEID.TERRAN_BARRACKS))
-
             self.have_worker_construct(barrack, location)
-            # print('building barrack')
 
     # ZW
     def build_refinery(self, bot: IDABot) -> None:
@@ -290,7 +282,7 @@ class Workplace:
 
     # DP
     def build_factory(self, bot: IDABot) -> None:
-        """Builds a barrack when necessary."""
+        """Builds a factory when necessary."""
         factory = UnitType(UNIT_TYPEID.TERRAN_FACTORY, bot)
 
         if can_afford(bot, factory) \
@@ -301,12 +293,12 @@ class Workplace:
             location = self.building_location_finder(bot, factory)
             self.have_worker_construct(factory, location)
 
+    # DP
     def upgrade_factory(self, factory: Unit, bot: IDABot) -> None:
         """Have given factory build a techlab on it."""
         factory_techlab = UnitType(UNIT_TYPEID.TERRAN_FACTORYTECHLAB, bot)
         if can_afford(bot, factory_techlab):
             factory.train(factory_techlab)
-            # print("upgrade fact")
 
     def building_location_finder(self, bot: IDABot, unit_type) -> Point2D:
         """Finds a suitable location to build a unit of given type"""
@@ -359,6 +351,7 @@ class Workplace:
 
     # ZW
     def remove(self, units: Union[Unit, Sequence[Unit]]) -> None:
+        """Removes unit(s) from current job(s) in current workplace"""
         if isinstance(units, Unit):
             units = [units]
 
@@ -439,11 +432,9 @@ class Workplace:
                 build = None
 
             if target:
-                # print(worker, ":", target)
                 self.free_worker(worker)
                 self.add_builder(worker)
                 build()
-                # orders_for_units[worker.id] = build
                 self.builders_targets[worker] = target
 
     def is_building_unittype(self, ut: UnitType) -> bool:
@@ -525,11 +516,13 @@ workplaces = []
 
 # DP
 def add_scout(scout: Unit) -> None:
+    """Adds a scout to scouts list"""
     scouts.append(scout)
 
 
 # DP
 def remove_scout(scout: Unit) -> None:
+    """removes a scout from scouts list"""
     scouts.remove(scout)
 
 

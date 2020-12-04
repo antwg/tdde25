@@ -134,6 +134,7 @@ class MyAgent(ScaiBackbone):
         if work:
             work.remove(unit)
 
+        # remove scout from scouts list
         if unit in scouts:
             remove_scout(unit)
 
@@ -149,8 +150,8 @@ class MyAgent(ScaiBackbone):
 
     def on_new_my_unit(self, unit: Unit):
         """Called each time a new unit is noticed."""
-        # print("new unit:", unit)
 
+        # Places building in right workplace (base location)
         add_to_workplace = False
 
         if unit.unit_type.is_building:
@@ -159,42 +160,59 @@ class MyAgent(ScaiBackbone):
                     workplace.on_building_completed(unit)
                     break
 
+        # lowers a supplydepot when done building
         if unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_SUPPLYDEPOT:
             unit.ability(ABILITY_ID.MORPH_SUPPLYDEPOT_LOWER)
 
+        # add marine to closest troop wanting marines
         elif unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_MARINE:
             troop = marine_seeks_troop(unit.position)
             if troop:
                 troop.add(unit)
 
+        # add marine to closest troop wanting tanks
         elif unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_BUNKER:
             troop = closest_troop(unit.position)
             troop.add(unit)
             troop.have_soldiers_enter(unit)
 
+        # add tank to closest troop wanting tanks
         elif unit.unit_type.unit_typeid in [UNIT_TYPEID.TERRAN_SIEGETANK,
                                             UNIT_TYPEID.TERRAN_SIEGETANKSIEGED]:
             troop = tank_seeks_troop(unit.position)
             if troop:
                 troop.add(unit)
 
+        # adds refinery to workplace at the end
         elif unit.unit_type.unit_typeid in refineries_TYPEIDS:
             add_to_workplace = True
 
+        # adds barracks to workplace at the end
         elif unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_BARRACKS:
             add_to_workplace = True
 
+        # adds SCV to closest workplace wanting SCVs
+        elif unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_SCV:
+            workplace = closest_workplace(unit.position)
+            if workplace:
+                workplace.add(unit)
+
+        # add commandcenter to workplace at the end
         elif unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_COMMANDCENTER:
             add_to_workplace = True
 
+        # adds factory to workplace, then tries to build techlab        
         elif unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_FACTORY:
             add_to_workplace = True
 
+        # add scv to closest workplace wanting SCVs
         elif unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_SCV:
             work = scv_seeks_workplace(unit.position)
             if work:
                 work.add(unit)
 
+        # if add_to_workplace is true from other if statments, add building to workplace.
+        # also upgrades factory if possible (only possible when unit is factory)
         if add_to_workplace:
             work = closest_workplace(unit.position)
             if work:
@@ -251,16 +269,20 @@ class MyAgent(ScaiBackbone):
 
     # DP
     def scout(self):
+        """Finds suitable scout (miner) that checks all base locations based on chords"""
         if len(troops) >= 1:
             if not scouts:
+                # Finds and adds scout to scouts
                 workplaces[-1].get_scout()
             if not all_base_chords:
+                # Gets all base chords
                 for cords in choke_point_dict:
                     all_base_chords.append(cords)
 
             if len(all_base_chords) > 0:
                 scout = scouts[0]
                 closest_base = self.closest_base(scout.position, all_base_chords)
+                # Move to closest base chord. If there or idle, go to next site.
                 if scout.is_idle or scout.position.dist(Point2D(closest_base.x, closest_base.y)) <= 1.5:
                     scout.move(closest_base)
                     all_base_chords.remove((closest_base.x, closest_base.y))
@@ -271,6 +293,7 @@ class MyAgent(ScaiBackbone):
         distance = 0
         for base_chords in locations:
             base = Point2D(base_chords[0], base_chords[1])
+            # Point2D.dist(...) is a function in scai_backbone
             if not closest or distance > base.dist(pos):
                 closest = base
                 distance = base.dist(pos)
