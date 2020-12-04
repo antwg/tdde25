@@ -19,15 +19,13 @@ class MyAgent(ScaiBackbone):
         ScaiBackbone.on_game_start(self)
         if self.side() == 'right':
             create_troop_defending(Point2D(114, 46))
-            create_troop_attacking(Point2D(114, 46))
         else:
             create_troop_defending(Point2D(37, 121))
-            create_troop_attacking(Point2D(37, 121))
         create_workplace(self.base_location_manager
                          .get_player_starting_base_location(PLAYER_SELF), self)
 
-        workplaces[0].max_number_of_barracks = 3
-        workplaces[0].max_number_of_factories = 2
+        # workplaces[0].max_number_of_barracks = 3
+        # workplaces[0].max_number_of_factories = 2
 
         # self.debug_give_all_resources()
 
@@ -36,61 +34,6 @@ class MyAgent(ScaiBackbone):
     def on_step(self):
         """Called each cycle, passed from IDABot.on_step()."""
         ScaiBackbone.on_step(self)
-        #
-        # sd = UnitType(UNIT_TYPEID.TERRAN_BARRACKS, self)
-        # sds = get_my_type_units(self, UNIT_TYPEID.TERRAN_SUPPLYDEPOT)
-        #
-        # if not currently_building(self, UNIT_TYPEID.TERRAN_BARRACKS) and any(map(lambda s: s.is_completed, sds)):
-        #     for unit in self.get_my_units():
-        #         if unit.unit_type.is_worker:
-        #             unit.build(sd, building_location_finder(self, self.start_location.to_i(), 7, sd).to_i())
-        #             self.points = []
-        #             break
-        #
-        # if not self.points:
-        #     for i in range(10):
-        #         self.points.append(building_location_finder(self, self.start_location.to_i(), i, sd))
-        #
-        # for i in range(len(self.points)):
-        #     if not self.points[i]:
-        #         continue
-        #
-        #     self.map_tools.draw_box(
-        #         self.points[i] - Point2D(i/2, i/2),
-        #         self.points[i] + Point2D(i/2, i/2),
-        #         [Color.WHITE, Color.YELLOW, Color.BLUE, Color.GREEN, Color.RED, Color.BLACK, Color.GRAY, Color.PURPLE, Color.TEAL, Color.WHITE][i]
-        #     )
-        #
-        # dist = 1
-        # if not self.point2:
-        #     self.point2 = building_location_finder(self, self.start_location.to_i(), dist, UnitType(UNIT_TYPEID.TERRAN_BARRACKS, self))
-        # else:
-        #     self.map_tools.draw_box(
-        #         self.point2 - Point2D(dist/2, dist/2),
-        #         self.point2 + Point2D(dist/2, dist/2),
-        #         Color.RED
-        #     )
-        #
-        # dist = 1
-        # if not self.point2:
-        #     self.point2 = building_location_finder(self, self.start_location.to_i(), dist, UnitType(UNIT_TYPEID.TERRAN_BARRACKS, self))
-        # else:
-        #     self.map_tools.draw_box(
-        #         self.point2 - Point2D(dist/2, dist/2),
-        #         self.point2 + Point2D(dist/2, dist/2),
-        #         Color.RED
-        #     )
-
-        #
-        # for unit in self.get_my_units():
-        #     if unit.unit_type.is_building:
-        #         self.map_tools.draw_box(
-        #             unit.position - Point2D(unit.radius-0.28, unit.radius-0.28),
-        #             unit.position + Point2D(unit.radius-0.28, unit.radius-0.28)
-        #         )
-
-        # return
-
         self.look_for_new_units()
 
         print_debug(self)
@@ -206,6 +149,11 @@ class MyAgent(ScaiBackbone):
         # add commandcenter to workplace at the end
         elif unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_COMMANDCENTER:
             add_to_workplace = True
+            if len(workplaces) == 3:
+                if self.side() == 'right':
+                    create_troop_attacking(Point2D(114, 46))
+                else:
+                    create_troop_attacking(Point2D(37, 121))
 
         # adds factory to workplace, then tries to build techlab        
         elif unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_FACTORY:
@@ -424,7 +372,7 @@ class MyAgent(ScaiBackbone):
 
     def troops_full(self):  # AW
         """Returns true if all troops are full"""
-        for troop in troops:
+        for troop in all_troops():
             if troop.wants_marines <= 1:
                 return True
 
@@ -436,7 +384,7 @@ class MyAgent(ScaiBackbone):
             depot_position
 
         tot_marines = 0
-        for troop in troops:
+        for troop in defenders:
             tot_marines += len(troop.marines)
 
         if (tot_marines >= len(workplaces) * 8)\

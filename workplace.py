@@ -35,10 +35,6 @@ class Workplace:
     others: List[Unit]  # All other units in this workplace
     # ---------------
 
-    # Max number of buildings per workplace (base location)
-    max_number_of_barracks: int = 0
-    max_number_of_factories: int = 0
-
     under_attack: bool  # If workplace is under attack or not
 
     mineral_fields: List[Unit]  # All discovered mineral fields in workplace
@@ -316,7 +312,7 @@ class Workplace:
                                                                unit_type, 35)
         elif unit_type == UnitType(UNIT_TYPEID.TERRAN_SUPPLYDEPOT, bot):
             return bot.building_placer.get_build_location_near(home_base_2di,
-                                                               unit_type, 5)
+                                                               unit_type, 20)
         else:
             raise Exception("Found location is bad.")
 
@@ -509,6 +505,18 @@ class Workplace:
     def has_enough_scvs(self) -> bool:
         """If the workplace needs any more scvs."""
         return self.wants_scvs <= 0
+
+    # Max number of buildings per workplace (base location)
+
+    @property
+    def max_number_of_barracks(self) -> int:
+        """return the max number of barracks"""
+        return 2 * len(workplaces)
+
+    @property
+    def max_number_of_factories(self) -> int:
+        """return the max number of factories"""
+        return 1 * len(workplaces)
 
     def str_unit(self, worker: Unit) -> str:
         """Create a string for a worker to be more informative."""
