@@ -318,7 +318,7 @@ class MyAgent(ScaiBackbone):
                     count_needed -= 1
                     ccs.remove(trainer)
 
-    def currently_building(self, unit_type): #AW
+    def currently_building(self, unit_type): # AW
         """"Checks if a unit is currently being built"""
         # TODO: Rewrite/Delete?
         return any([unit.build_percentage < 1 for unit in
@@ -407,32 +407,23 @@ class MyAgent(ScaiBackbone):
             unit_list.append(unit_tuple)
         return sorted(unit_list, key=lambda tup: tup[0])[0][1]
 
-    def squared_distance(self, p1, p2): #AW
+    def squared_distance(self, p1, p2):  # AW
         """Calculates the squared distance between 2 points"""
         return (p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2
 
-    def choke_points(self, coordinates) -> Point2D:
+    def choke_points(self, coordinates) -> Point2D:  # AW
         """Returns the appropriate choke point"""
-        choke_point_dict = {(59, 28): (52, 35), (125, 137): (127, 128),
-                            (58, 128): (67, 116), (125, 30): (114, 46),
-                            (92, 139): (99, 130), (25, 111): (44, 101),
-                            (26, 81): (30, 67), (86, 114): (93, 102),
-                            (91, 71): (88, 82), (93, 39): (85, 50),
-                            (126, 56): (108, 67), (65, 53): (69, 58),
-                            (125, 86): (121, 100), (26, 30): (23, 39),
-                            (26, 137): (37, 120), (60, 96): (58, 83)}
-
         return Point2D(choke_point_dict[coordinates][0],
                        choke_point_dict[coordinates][1])
 
-    def troops_full(self):
+    def troops_full(self):  # AW
+        """Returns true if all troops are full"""
         for troop in troops:
             if troop.wants_marines <= 1:
                 return True
 
     def expansion(self):  # AW
         """Builds new command center when needed"""
-        marines = UNIT_TYPEID.TERRAN_MARINE
         command_center = UNIT_TYPEID.TERRAN_COMMANDCENTER
         command_center_type = UnitType(UNIT_TYPEID.TERRAN_COMMANDCENTER, self)
         location = self.base_location_manager.get_next_expansion(PLAYER_SELF).\

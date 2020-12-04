@@ -66,7 +66,8 @@ class Workplace:
         elif unit in self.factories_with_techlab:
             bot.should_train_tanks.append(unit)
         elif unit in self.factories:
-            if has_addon(bot, unit, UnitType(UNIT_TYPEID.TERRAN_FACTORYTECHLAB, bot)):
+            if has_addon(bot, unit, UnitType(UNIT_TYPEID.TERRAN_FACTORYTECHLAB,
+                                             bot)):
                 self.factories_with_techlab.append(unit)
             else:
                 self.upgrade_factory(unit, bot)
@@ -94,7 +95,8 @@ class Workplace:
         self.factories_with_techlab = []
 
         for unit in bot.get_all_units():
-            if unit.minerals_left_in_mineralfield > 0 and unit.unit_type.is_mineral \
+            if unit.minerals_left_in_mineralfield > 0 \
+                    and unit.unit_type.is_mineral \
                     and location.contains_position(unit.position) \
                     and unit not in self.mineral_fields:
                 self.add_mineral_field(unit)
@@ -179,7 +181,8 @@ class Workplace:
         """Updates all workers and redistribute jobs if needed."""
         lazy_builders = []
         for builder in self.builders:
-            if builder.has_target and builder.target.unit_type.unit_typeid in minerals_TYPEIDS:
+            if builder.has_target and builder.target.unit_type.unit_typeid \
+                    in minerals_TYPEIDS:
                 lazy_builders.append(builder)
         for builder in lazy_builders:
             self.assign_worker_job(builder)
@@ -242,7 +245,7 @@ class Workplace:
         if (bot.current_supply / bot.max_supply) >= 0.8 \
                 and bot.max_supply < 200 \
                 and can_afford(bot, supply_depot) \
-                and not currently_building(bot, UNIT_TYPEID.TERRAN_SUPPLYDEPOT) \
+                and not currently_building(bot, UNIT_TYPEID.TERRAN_SUPPLYDEPOT)\
                 and not self.is_building_unittype(supply_depot):
             location = self.building_location_finder(bot, supply_depot)
             self.have_worker_construct(supply_depot, location)
@@ -305,11 +308,14 @@ class Workplace:
         home_base = self.location.position
         home_base_2di = Point2DI(int(home_base.x), int(home_base.y))
         if unit_type == UnitType(UNIT_TYPEID.TERRAN_FACTORY, bot):
-            return bot.building_placer.get_build_location_near(home_base_2di, unit_type, 40)
+            return bot.building_placer.get_build_location_near(home_base_2di,
+                                                               unit_type, 40)
         elif unit_type == UnitType(UNIT_TYPEID.TERRAN_BARRACKS, bot):
-            return bot.building_placer.get_build_location_near(home_base_2di, unit_type, 35)
+            return bot.building_placer.get_build_location_near(home_base_2di,
+                                                               unit_type, 35)
         elif unit_type == UnitType(UNIT_TYPEID.TERRAN_SUPPLYDEPOT, bot):
-            return bot.building_placer.get_build_location_near(home_base_2di, unit_type, 5)
+            return bot.building_placer.get_build_location_near(home_base_2di,
+                                                               unit_type, 5)
         else:
             raise Exception("Found location is bad.")
 
@@ -397,7 +403,8 @@ class Workplace:
     def has_build_target(self, building: Unit) -> bool:
         """Check if workplace is trying to construct given unit."""
         for target in self.builders_targets.values():
-            if building.unit_type == target[0] and building.tile_position == target[1]:
+            if building.unit_type == target[0] and building.tile_position\
+                    == target[1]:
                 return True
         return False
 
@@ -504,7 +511,8 @@ class Workplace:
 
     def str_unit(self, worker: Unit) -> str:
         """Create a string for a worker to be more informative."""
-        return str(worker) + ":" + str(worker.id) + "  on " + str(workplaces.index(self))
+        return (str(worker) + ":" + str(worker.id) + "  on "
+                + str(workplaces.index(self)))
 
 
 # All scouts
@@ -553,11 +561,11 @@ def scv_seeks_workplace(pos: Point2D) -> Workplace:
     distance = [0, 0]
     for workplace in workplaces:
         if workplace.wants_scvs > 0:
-            if not closest[0] or distance[0] > workplace.location.position.dist(pos) \
+            if not closest[0] or distance[0] > workplace.location.position.dist(pos)\
                     / workplace.wants_scvs:
                 closest[0] = workplace
                 distance[0] = workplace.location.position.dist(pos) \
-                              / workplace.wants_scvs
+                    / workplace.wants_scvs
         else:
             if not closest[1] or distance[1] > workplace.location.position.dist(pos):
                 closest[1] = workplace

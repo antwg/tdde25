@@ -125,7 +125,6 @@ class Troop:
         """Have a member execute order."""
         self.__order(trooper)
 
-
     # ---------- BASIC HANDLERS ----------
     # Handles basic functions as adding and removing units
 
@@ -256,7 +255,8 @@ def marine_seeks_troop(position: Point2D) -> Troop:
     distance = [0, 0]
     for troop in troops:
         if troop.wants_marines > 0:
-            if not closest[0] or troop.target_pos.dist(position) / troop.wants_marines < distance[0]:
+            if not closest[0] or troop.target_pos.dist(position)\
+                    / troop.wants_marines < distance[0]:
                 closest[0] = troop
                 distance[0] = troop.target_pos.dist(position)
         else:
@@ -273,7 +273,8 @@ def tank_seeks_troop(position: Point2D) -> Troop:
     closest = None
     distance = 0
     for troop in troops:
-        if not closest or troop.target_pos.dist(position) / max(troop.wants_tanks, 0.1) < distance:
+        if not closest or troop.target_pos.dist(position)\
+                / max(troop.wants_tanks, 0.1) < distance:
             closest = troop
             distance = troop.target_pos.dist(position)
     return closest
