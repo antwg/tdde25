@@ -241,6 +241,7 @@ class MyAgent(ScaiBackbone):
     def look_for_new_units(self):
         """Find units that has not been noticed by the bot."""
         temp_remember_these = self.remember_these.copy()
+        # Checks for new units
         for unit in self.get_all_units():
             if unit not in temp_remember_these:
                 if unit.is_completed and unit.is_alive and unit.is_valid \
@@ -263,7 +264,6 @@ class MyAgent(ScaiBackbone):
                 self.on_idle_my_unit(unit)
 
         for remembered_unit in temp_remember_these:
-            # How to handle not found units?
             pass
 
     # DP
@@ -432,8 +432,11 @@ class MyAgent(ScaiBackbone):
         location = self.base_location_manager.get_next_expansion(PLAYER_SELF).\
             depot_position
 
-        if (len(get_my_type_units(self, marines)) + len(bunker_marine)
-            >= len(workplaces) * 8)\
+        tot_marines = 0
+        for troop in troops:
+            tot_marines += len(troop.marines)
+
+        if (tot_marines >= len(workplaces) * 8)\
                 and can_afford(self, command_center_type)\
                 and not currently_building(self, command_center)\
                 and closest_workplace(location).get_suitable_builder():
