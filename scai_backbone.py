@@ -58,6 +58,7 @@ choke_point_dict = {(59, 28): (52, 35), (125, 137): (127, 128),
 
 all_base_chords = []
 
+
 # Get the distance to a point from a point
 Point2D.dist = lambda self, other: sqrt((self.x - other.x)**2
                                         + (self.y - other.y)**2)

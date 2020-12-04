@@ -5,6 +5,7 @@ from library import *
 from scai_backbone import siege_tanks_TYPEIDS
 
 from workplace import *
+global bunker_marine
 
 
 # ZW
@@ -123,6 +124,7 @@ class Troop:
     def unit_execute_order(self, trooper: Unit):
         """Have a member execute order."""
         self.__order(trooper)
+
 
     # ---------- BASIC HANDLERS ----------
     # Handles basic functions as adding and removing units

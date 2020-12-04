@@ -19,9 +19,9 @@ class MyAgent(ScaiBackbone):
         """Called on start up, passed from IDABot.on_game_start()."""
         ScaiBackbone.on_game_start(self)
         if self.side() == 'right':
-            create_troop(Point2D(119, 47))
+            create_troop(Point2D(114, 46))
         else:
-            create_troop(Point2D(33, 120))
+            create_troop(Point2D(37, 121))
         create_workplace(self.base_location_manager
                          .get_player_starting_base_location(PLAYER_SELF), self)
 
@@ -104,6 +104,7 @@ class MyAgent(ScaiBackbone):
             self.train_tank()
         self.expansion()
         # self.scout()
+
         
     def get_coords(self):
         """Prints position of all workers"""
@@ -390,16 +391,21 @@ class MyAgent(ScaiBackbone):
     def choke_points(self, coordinates) -> Point2D:
         """Returns the appropriate choke point"""
         choke_point_dict = {(59, 28): (52, 35), (125, 137): (127, 128),
-                            (58, 128): (67, 116), (125, 30): (119, 47),
+                            (58, 128): (67, 116), (125, 30): (114, 46),
                             (92, 139): (99, 130), (25, 111): (44, 101),
                             (26, 81): (30, 67), (86, 114): (93, 102),
                             (91, 71): (88, 82), (93, 39): (85, 50),
                             (126, 56): (108, 67), (65, 53): (69, 58),
                             (125, 86): (121, 100), (26, 30): (23, 39),
-                            (26, 137): (33, 120), (60, 96): (58, 83)}
+                            (26, 137): (37, 120), (60, 96): (58, 83)}
 
         return Point2D(choke_point_dict[coordinates][0],
                        choke_point_dict[coordinates][1])
+
+    def troops_full(self):
+        for troop in troops:
+            if troop.wants_marines <= 1:
+                return True
 
     def expansion(self):  # AW
         """Builds new command center when needed"""
@@ -408,9 +414,7 @@ class MyAgent(ScaiBackbone):
         command_center_type = UnitType(UNIT_TYPEID.TERRAN_COMMANDCENTER, self)
         location = self.base_location_manager.get_next_expansion(PLAYER_SELF).\
             depot_position
-
-        if (len(get_my_type_units(self, marines)) + bunker_marine
-            >= len(workplaces) * 8)\
+        if self.troops_full()\
                 and can_afford(self, command_center_type)\
                 and not currently_building(self, command_center)\
                 and closest_workplace(location).get_suitable_builder():
