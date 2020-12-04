@@ -8,7 +8,7 @@ from debug import *
 from extra import *
 from armies import *
 from workplace import *
-bunker_marine = []
+bunker_marine = 0
 
 
 # ZW
@@ -108,7 +108,7 @@ class MyAgent(ScaiBackbone):
             for marine in troop.marines[:4]:
                 marine.right_click(unit)
                 global bunker_marine
-                bunker_marine += marine
+                bunker_marine += 1
 
         elif unit.unit_type.unit_typeid in [UNIT_TYPEID.TERRAN_SIEGETANK,
                                             UNIT_TYPEID.TERRAN_SIEGETANKSIEGED]:
@@ -309,7 +309,7 @@ class MyAgent(ScaiBackbone):
         location = self.base_location_manager.get_next_expansion(PLAYER_SELF).\
             depot_position
 
-        if (len(get_my_type_units(self, marines)) + len(bunker_marine)
+        if (len(get_my_type_units(self, marines)) + bunker_marine
             >= len(workplaces) * 8)\
                 and can_afford(self, command_center_type)\
                 and not currently_building(self, command_center)\

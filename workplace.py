@@ -55,7 +55,7 @@ class Workplace:
 
     def on_idle_my_unit(self, unit: Unit, bot: IDABot) -> None:
         """Called each time for a worker that is idle in this workplace."""
-        if unit in self.miners and self.miners:
+        if unit in self.miners and self.mineral_fields:
             unit.right_click(random.choice(self.mineral_fields))
         elif unit in self.gasers:
             for refinery, gasers in self.refineries.items():
