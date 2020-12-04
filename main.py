@@ -184,6 +184,9 @@ class MyAgent(ScaiBackbone):
                 if workplace.location.contains_position(unit.position):
                     workplace.add_geyser(unit)
 
+        # elif unit.unit_type.unit_typeid in grounded_command_centers_TYPEIDS \
+        #    and unit.player == PLAYER_ENEMY:
+
     def on_lost_unit(self, unit: Unit):
         """Called when a unit is lost, even when lost_my_unit."""
         if unit.unit_type.unit_typeid in minerals_TYPEIDS:

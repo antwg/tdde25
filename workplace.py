@@ -511,12 +511,12 @@ class Workplace:
     @property
     def max_number_of_barracks(self) -> int:
         """return the max number of barracks"""
-        return 2 * len(workplaces)
+        return min((2 * len(workplaces)), 6)
 
     @property
     def max_number_of_factories(self) -> int:
         """return the max number of factories"""
-        return 1 * len(workplaces)
+        return min((1 * len(workplaces)), 3)
 
     def str_unit(self, worker: Unit) -> str:
         """Create a string for a worker to be more informative."""
