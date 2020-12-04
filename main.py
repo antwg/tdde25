@@ -8,7 +8,6 @@ from debug import *
 from extra import *
 from armies import *
 from workplace import *
-bunker_marine = []
 
 
 # ZW
@@ -19,11 +18,16 @@ class MyAgent(ScaiBackbone):
         """Called on start up, passed from IDABot.on_game_start()."""
         ScaiBackbone.on_game_start(self)
         if self.side() == 'right':
-            create_troop(Point2D(119, 47))
+            create_troop_defending(Point2D(119, 47))
+            create_troop_attacking(Point2D(119, 47))
         else:
-            create_troop(Point2D(33, 120))
+            create_troop_defending(Point2D(33, 120))
+            create_troop_attacking(Point2D(33, 120))
         create_workplace(self.base_location_manager
                          .get_player_starting_base_location(PLAYER_SELF), self)
+
+        workplaces[0].max_number_of_barracks = 3
+        workplaces[0].max_number_of_factories = 2
 
         # self.debug_give_all_resources()
 
@@ -94,8 +98,10 @@ class MyAgent(ScaiBackbone):
         for workplace in workplaces:
             workplace.on_step(self)
 
-        for troop in troops:
+        for troop in all_troops():
             troop.on_step(self)
+            if troop.is_attackers and troop.satisfied and troop.have_all_reached_target:
+                troop.march_units(self.base_location_manager.get_player_starting_base_location(PLAYER_ENEMY).position)
 
         self.train_scv()
         if self.should_train_marines:
@@ -171,9 +177,9 @@ class MyAgent(ScaiBackbone):
 
         # add marine to closest troop wanting tanks
         elif unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_BUNKER:
-            troop = closest_troop(unit.position)
-            troop.add(unit)
-            troop.have_soldiers_enter(unit)
+            troop = bunker_seeks_troop(unit.position)
+            if troop:
+                troop.add(unit)
 
         # add tank to closest troop wanting tanks
         elif unit.unit_type.unit_typeid in [UNIT_TYPEID.TERRAN_SIEGETANK,
@@ -192,7 +198,7 @@ class MyAgent(ScaiBackbone):
 
         # adds SCV to closest workplace wanting SCVs
         elif unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_SCV:
-            workplace = closest_workplace(unit.position)
+            workplace = scv_seeks_workplace(unit.position)
             if workplace:
                 workplace.add(unit)
 
@@ -269,7 +275,7 @@ class MyAgent(ScaiBackbone):
     # DP
     def scout(self):
         """Finds suitable scout (miner) that checks all base locations based on chords"""
-        if len(troops) >= 1:
+        if len(defenders) >= 1:
             if not scouts:
                 # Finds and adds scout to scouts
                 workplaces[-1].get_scout()
@@ -347,7 +353,7 @@ class MyAgent(ScaiBackbone):
         not_promised_marine = len(list(filter(
             lambda b: b.is_constructing(marine), self.get_my_units())))
 
-        for troop in troops:
+        for troop in all_troops():
             if troop.wants_marines - not_promised_marine > 0\
                     and can_afford(self, marine):
 
@@ -375,7 +381,7 @@ class MyAgent(ScaiBackbone):
             not_promised_tanks = len(list(filter(
                 lambda b: b.is_constructing(tank), self.get_my_units())))
 
-            for troop in troops:
+            for troop in all_troops():
                 if troop.wants_tanks - not_promised_tanks > 0:
 
                     factory = get_closest_unit(
@@ -432,7 +438,7 @@ class MyAgent(ScaiBackbone):
         location = self.base_location_manager.get_next_expansion(PLAYER_SELF).\
             depot_position
 
-        if (len(get_my_type_units(self, marines)) + len(bunker_marine)
+        if (len(get_my_type_units(self, marines))
             >= len(workplaces) * 8)\
                 and can_afford(self, command_center_type)\
                 and not currently_building(self, command_center)\
@@ -451,7 +457,7 @@ class MyAgent(ScaiBackbone):
                                                     location)
 
             point = self.choke_points((location.x, location.y))
-            create_troop(point)
+            create_troop_defending(point)
 
 
 if __name__ == "__main__":

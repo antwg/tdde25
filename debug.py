@@ -76,7 +76,7 @@ def print_unit_overview(bot: IDABot):
         space += 0.025
 
 
-    # DP
+# DP
 def unit_assignment(bot: IDABot):
     """Creates dictionary of unit and assignment, from the class Workplace"""
     assignment = {}
@@ -97,11 +97,17 @@ def unit_assignment(bot: IDABot):
         for barrack in workplace.barracks:
             assignment[barrack] = "barrack" + loyalty
 
-        for troop in troops:
+        for troop in defenders:
             for marine in troop.marines:
                 assignment[marine] = "defence"
             for tank in troop.tanks:
                 assignment[tank] = "defence"
+
+        for troop in attackers:
+            for marine in troop.marines:
+                assignment[marine] = "offence"
+            for tank in troop.tanks:
+                assignment[tank] = "offence"
 
         for scout in scouts:
             assignment[scout] = "scout"

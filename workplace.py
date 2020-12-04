@@ -36,8 +36,8 @@ class Workplace:
     # ---------------
 
     # Max number of buildings per workplace (base location)
-    max_number_of_barracks: int = 2
-    max_number_of_factories: int = 1
+    max_number_of_barracks: int = 0
+    max_number_of_factories: int = 0
 
     under_attack: bool  # If workplace is under attack or not
 
@@ -500,7 +500,7 @@ class Workplace:
     @property
     def has_enough_scvs(self) -> bool:
         """If the workplace needs any more scvs."""
-        return self.wants_scv <= 0
+        return self.wants_scvs <= 0
 
     def str_unit(self, worker: Unit) -> str:
         """Create a string for a worker to be more informative."""
