@@ -134,6 +134,7 @@ def tank_seeks_troop(position: Point2D) -> Troop:
 
 # ZW
 def find_unit_troop(unit: Unit) -> Union[Troop, None]:
+    """Finds troop current unit is in"""
     for troop in troops:
         if troop.has_unit(unit):
             return troop

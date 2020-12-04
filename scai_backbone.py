@@ -56,6 +56,7 @@ choke_point_dict = {(59, 28): (52, 35), (125, 137): (127, 128),
                             (125, 86): (121, 100), (26, 30): (23, 39),
                             (26, 137): (33, 120)}
 
+# List made for scouts to store base_chords
 all_base_chords = []
 
 # Get the distance to a point from a point
