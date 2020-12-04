@@ -4,14 +4,13 @@ import math
 from library import *
 from copy import deepcopy
 
-
+from extra import *
 from funcs import *
 
-
-# DP
 from scai_backbone import refineries_TYPEIDS, minerals_TYPEIDS
 
 
+# DP
 class Workplace:
     """handles jobs for workers"""
     location: BaseLocation  # The BaseLocation the workplace represent
@@ -30,6 +29,7 @@ class Workplace:
     refineries: Dict[Unit, List[Unit]]  # The list contains all its gas collectors
     barracks: List[Unit]  # All barracks
     factories: List[Unit]  # All factories
+    factories_with_techlab: List[Unit]  # All factories with techlab, must first be in factories
 
     # Other:
     others: List[Unit]  # All other units in this workplace
@@ -63,6 +63,15 @@ class Workplace:
                 if unit in gasers:
                     unit.right_click(refinery)
                     break
+        elif unit in self.factories_with_techlab:
+            bot.should_train_tanks.append(unit)
+        elif unit in self.factories:
+            if has_addon(bot, unit, UnitType(UNIT_TYPEID.TERRAN_FACTORYTECHLAB, bot)):
+                self.factories_with_techlab.append(unit)
+            else:
+                self.upgrade_factory(unit, bot)
+        elif unit in self.barracks:
+            bot.should_train_marines.append(unit)
 
     def __init__(self, location: BaseLocation, bot: IDABot):
         """Called when a new workplace is created. Note that a workplace
@@ -79,8 +88,20 @@ class Workplace:
         self.refineries = {}
         self.others = []
         self.under_attack = False
+        self.command_centers = []
         self.barracks = []
         self.factories = []
+        self.factories_with_techlab = []
+
+        for unit in bot.get_all_units():
+            if unit.minerals_left_in_mineralfield > 0 and unit.unit_type.is_mineral \
+                    and location.contains_position(unit.position) \
+                    and unit not in self.mineral_fields:
+                self.add_mineral_field(unit)
+
+            if unit.gas_left_in_refinery > 0 and unit.unit_type.is_geyser \
+                    and location.contains_position(unit.position):
+                self.add_geyser(unit)
 
     # DP
     def get_scout(self) -> Union[Unit, None]:
@@ -93,7 +114,8 @@ class Workplace:
     # ZW
     def add_miner(self, worker: Unit) -> None:
         """Adds a miner and handles necessary operations."""
-        worker.stop()
+        if worker.has_target and worker.target not in self.mineral_fields:
+            worker.stop()
         self.miners.append(worker)
 
     # ZW
@@ -169,6 +191,22 @@ class Workplace:
                         self.remove_miner(worker)
                         self.add_gaser(worker, refinery)
 
+    # ZW
+    def add_mineral_field(self, mineral_field: Unit):
+        """Add a mineral_field to the workplace."""
+        if mineral_field.minerals_left_in_mineralfield > 0 \
+                and not any(map(lambda mf: mineral_field == mf,
+                                self.mineral_fields)):
+            self.mineral_fields.append(mineral_field)
+
+    # ZW
+    def add_geyser(self, geyser: Unit):
+        """Add a geyser to the workplace."""
+        if geyser.gas_left_in_refinery \
+                and not any(map(lambda g: geyser == g,
+                                self.mineral_fields)):
+            self.geysers.append(geyser)
+
     # DP
     def get_suitable_builder(self) -> Union[Unit, None]:
         """Returns a suitable miner (worker)"""
@@ -186,14 +224,15 @@ class Workplace:
 
     def get_units(self) -> List[Unit]:
         """Get all units in workplace."""
-        return self.workers + self.others + self.barracks + self.factories
+        return (self.workers
+                + self.others
+                + self.barracks
+                + self.factories
+                + self.command_centers)
 
     def has_unit(self, unit: Unit) -> bool:
         """Check if workplace has unit."""
-        if unit in self.get_units():
-            return True
-        else:
-            return False
+        return unit in self.get_units()
 
     # AW
     def build_supply_depot(self, bot: IDABot) -> None:
@@ -254,11 +293,12 @@ class Workplace:
             location = self.building_location_finder(bot, factory)
             self.have_worker_construct(factory, location)
 
-    def upgrade_factory(self, bot: IDABot, unit):
-        """Upgrades an existing factory with a techlab"""
+    # DP
+    def upgrade_factory(self, factory: Unit, bot: IDABot) -> None:
+        """Have given factory build a techlab on it."""
         factory_techlab = UnitType(UNIT_TYPEID.TERRAN_FACTORYTECHLAB, bot)
-        unit.train(factory_techlab)
-
+        if can_afford(bot, factory_techlab):
+            factory.train(factory_techlab)
 
     def building_location_finder(self, bot: IDABot, unit_type) -> Point2D:
         """Finds a suitable location to build a unit of given type"""
@@ -404,11 +444,11 @@ class Workplace:
                 return True
         return False
 
-    def add_barracks(self, barrack) -> None:
+    def add_barracks(self, barrack: Unit) -> None:
         """Adds a barrack to the workplace."""
         self.barracks.append(barrack)
         
-    def add_factory(self, factory) -> None:
+    def add_factory(self, factory: Unit) -> None:
         """Adds a factory to the workplace."""
         self.factories.append(factory)
 
@@ -496,19 +536,14 @@ def create_workplace(bot: IDABot, location: BaseLocation) -> Workplace:
 # DP, ZW
 def closest_workplace(pos: Point2D) -> Workplace:
     """Checks the closest workplace to a position"""
-    closest = [None, None]
-    distance = [0, 0]
+    closest = None
+    distance = 0
     for workplace in workplaces:
-        if workplace.wants_scvs:
-            if not closest[0] or distance[0] > workplace.location.position.dist(pos):
-                closest[0] = workplace
-                distance[0] = workplace.location.position.dist(pos)
-        else:
-            if not closest[1] or distance[1] > workplace.location.position.dist(pos):
-                closest[1] = workplace
-                distance[1] = workplace.location.position.dist(pos)
+        if not closest or distance > workplace.location.position.dist(pos):
+            closest = workplace
+            distance = workplace.location.position.dist(pos)
 
-    return closest[0] if closest[0] else closest[1]
+    return closest
 
 
 # ZW
@@ -530,3 +565,10 @@ def scv_seeks_workplace(pos: Point2D) -> Workplace:
 
     return closest[0] if closest[0] else closest[1]
 
+
+# ZW
+def find_unit_workplace(unit: Unit) -> Union[Workplace, None]:
+    for workplace in workplaces:
+        if workplace.has_unit(unit):
+            return workplace
+    return None
