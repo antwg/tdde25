@@ -35,10 +35,6 @@ class Workplace:
     others: List[Unit]  # All other units in this workplace
     # ---------------
 
-    # Max number of buildings per workplace (base location)
-    max_number_of_barracks: int = 0
-    max_number_of_factories: int = 0
-
     under_attack: bool  # If workplace is under attack or not
 
     mineral_fields: List[Unit]  # All discovered mineral fields in workplace
@@ -53,7 +49,6 @@ class Workplace:
         self.build_barrack(bot)
         self.build_factory(bot)
         self.build_refinery(bot)
-
     def on_idle_my_unit(self, unit: Unit, bot: IDABot) -> None:
         """Called each time for a worker that is idle in this workplace."""
         if unit in self.miners and self.mineral_fields:
@@ -255,13 +250,14 @@ class Workplace:
         """Builds a barrack when necessary."""
         barrack = UnitType(UNIT_TYPEID.TERRAN_BARRACKS, bot)
 
-        if can_afford(bot, barrack) \
-                and len(self.barracks) < self.max_number_of_barracks \
-                and not self.is_building_unittype(barrack)\
-                and len(self.miners) > 5:
+        if workplaces[0] == self:
+            if can_afford(bot, barrack) \
+                    and len(self.barracks) < self.max_number_of_barracks \
+                    and not self.is_building_unittype(barrack)\
+                    and len(self.miners) > 5:
 
-            location = self.building_location_finder(bot, barrack)
-            self.have_worker_construct(barrack, location)
+                location = self.building_location_finder(bot, barrack)
+                self.have_worker_construct(barrack, location)
 
     # ZW
     def build_refinery(self, bot: IDABot) -> None:
@@ -288,13 +284,14 @@ class Workplace:
         """Builds a factory when necessary."""
         factory = UnitType(UNIT_TYPEID.TERRAN_FACTORY, bot)
 
-        if can_afford(bot, factory) \
-                and len(self.factories) < self.max_number_of_factories \
-                and not currently_building(bot, UNIT_TYPEID.TERRAN_FACTORY) \
-                and not self.is_building_unittype(factory)\
-                and len(self.miners) > 5:
-            location = self.building_location_finder(bot, factory)
-            self.have_worker_construct(factory, location)
+        if workplaces[0] == self:
+            if can_afford(bot, factory) \
+                    and len(self.factories) < self.max_number_of_factories \
+                    and not currently_building(bot, UNIT_TYPEID.TERRAN_FACTORY) \
+                    and not self.is_building_unittype(factory)\
+                    and len(self.miners) > 5:
+                location = self.building_location_finder(bot, factory)
+                self.have_worker_construct(factory, location)
 
     # DP
     def upgrade_factory(self, factory: Unit, bot: IDABot) -> None:
@@ -315,7 +312,7 @@ class Workplace:
                                                                unit_type, 35)
         elif unit_type == UnitType(UNIT_TYPEID.TERRAN_SUPPLYDEPOT, bot):
             return bot.building_placer.get_build_location_near(home_base_2di,
-                                                               unit_type, 5)
+                                                               unit_type, 20)
         else:
             raise Exception("Found location is bad.")
 
@@ -511,6 +508,18 @@ class Workplace:
     def has_enough_scvs(self) -> bool:
         """If the workplace needs any more scvs."""
         return self.wants_scvs <= 0
+
+    # Max number of buildings per workplace (base location)
+
+    @property
+    def max_number_of_barracks(self) -> int:
+        """return the max number of barracks"""
+        return 2 * len(workplaces)
+
+    @property
+    def max_number_of_factories(self) -> int:
+        """return the max number of factories"""
+        return 1 * len(workplaces)
 
     def str_unit(self, worker: Unit) -> str:
         """Create a string for a worker to be more informative."""
