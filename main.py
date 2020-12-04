@@ -27,7 +27,7 @@ class MyAgent(ScaiBackbone):
 
         # self.debug_give_all_resources()
 
-        self.points = []
+        # self.points = []
 
     def on_step(self):
         """Called each cycle, passed from IDABot.on_step()."""
@@ -94,10 +94,16 @@ class MyAgent(ScaiBackbone):
         for workplace in workplaces:
             workplace.on_step(self)
 
+        for troop in troops:
+            troop.on_step(self)
+
         self.train_scv()
-        self.train_marine()
+        if self.should_train_marines:
+            self.train_marine()
+        if self.should_train_tanks:
+            self.train_tank()
         self.expansion()
-        self.scout()
+        # self.scout()
         
     def get_coords(self):
         """Prints position of all workers"""
@@ -123,27 +129,22 @@ class MyAgent(ScaiBackbone):
         if troop:
             troop.remove(unit)
 
-        # Remove minerals from workplace.miners_targets
-        if unit.unit_type.unit_typeid in minerals_TYPEIDS:
-            for workplace in workplaces:
-                if unit in workplace.miners_targets:
-                    workplace.miners_targets.remove(unit)
+        work = find_unit_workplace(unit)
+        if work:
+            work.remove(unit)
 
         if unit in scouts:
             remove_scout(unit)
 
     def on_idle_my_unit(self, unit: Unit):
         """Called each time a unit is idle."""
-        if unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_BARRACKS:
-            self.train_marine()
+        troop = find_unit_troop(unit)
+        if troop:
+            troop.on_idle(unit, self)
 
-        if find_unit_troop(unit):
-            find_unit_troop(unit).on_idle(unit, self)
-
-        if unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_SCV:
-            for workplace in workplaces:
-                if workplace.has_unit(unit):
-                    workplace.on_idle_my_unit(unit, self)
+        work = find_unit_workplace(unit)
+        if work:
+            work.on_idle_my_unit(unit, self)
 
     def on_new_my_unit(self, unit: Unit):
         """Called each time a new unit is noticed."""
@@ -168,10 +169,7 @@ class MyAgent(ScaiBackbone):
         elif unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_BUNKER:
             troop = closest_troop(unit.position)
             troop.add(unit)
-            for marine in troop.marines[:4]:
-                marine.right_click(unit)
-                global bunker_marine
-                bunker_marine += 1
+            troop.have_soldiers_enter(unit)
 
         elif unit.unit_type.unit_typeid in [UNIT_TYPEID.TERRAN_SIEGETANK,
                                             UNIT_TYPEID.TERRAN_SIEGETANKSIEGED]:
@@ -188,30 +186,30 @@ class MyAgent(ScaiBackbone):
         elif unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_COMMANDCENTER:
             add_to_workplace = True
 
-        elif unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_SCV:
-            add_to_workplace = True
-                
         elif unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_FACTORY:
             add_to_workplace = True
 
-        if add_to_workplace:
-            work = closest_workplace(unit.position)
-            print("fact")
+        elif unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_SCV:
+            work = scv_seeks_workplace(unit.position)
             if work:
                 work.add(unit)
-                work.upgrade_factory(self, unit)
+
+        if add_to_workplace:
+            work = closest_workplace(unit.position)
+            if work:
+                work.add(unit)
 
     def on_discover_unit(self, unit: Unit):
         """Called when a unit is discovered, even when new_my_unit."""
         if unit.unit_type.unit_typeid in minerals_TYPEIDS and unit.minerals_left_in_mineralfield > 0:
             for workplace in workplaces:
                 if workplace.location.contains_position(unit.position):
-                    workplace.mineral_fields.append(unit)
+                    workplace.add_mineral_field(unit)
 
         elif unit.unit_type.unit_typeid in geysers_TYPEIDS and unit.gas_left_in_refinery > 0:
             for workplace in workplaces:
                 if workplace.location.contains_position(unit.position):
-                    workplace.geysers.append(unit)
+                    workplace.add_geyser(unit)
 
     def on_lost_unit(self, unit: Unit):
         """Called when a unit is lost, even when lost_my_unit."""
@@ -229,10 +227,11 @@ class MyAgent(ScaiBackbone):
             if unit not in temp_remember_these:
                 if unit.is_completed and unit.is_alive and unit.is_valid \
                         and self.map_tools.is_explored(unit.position):
-                    self.remember_these.append(unit)
                     if unit.owner == self.id:
                         self.on_new_my_unit(unit)
                     self.on_discover_unit(unit)
+                self.remember_these.append(unit)
+
             else:
                 temp_remember_these.remove(unit)
                 if not unit.is_completed or not unit.is_alive or not unit.is_valid:
@@ -302,15 +301,28 @@ class MyAgent(ScaiBackbone):
                     get_my_type_units(self, unit_type)])
 
     # ZW
+    def have_one(self, utid: Union[UNIT_TYPEID, UnitType]) -> bool:
+        """Check if there exists at least one of these units in my_units."""
+        if isinstance(utid, UNIT_TYPEID):
+            for unit in self.get_my_units():
+                if unit.unit_type.unit_typeid == utid:
+                    return True
+        elif isinstance(utid, UnitType):
+            for unit in self.get_my_units():
+                if unit.unit_type == utid:
+                    return True
+        return False
+
+    # ZW
     def train_marine(self):
         """Train marines if more are required."""
 
         # ___Try to fill troops by producing marines___
-        barracks = get_my_type_units(self, UNIT_TYPEID.TERRAN_BARRACKS)
+        barracks = self.should_train_marines
         marine = UnitType(UNIT_TYPEID.TERRAN_MARINE, self)
         # To stop overflow of produce
         not_promised_marine = len(list(filter(
-            lambda b: b.is_constructing(marine), barracks)))
+            lambda b: b.is_constructing(marine), self.get_my_units())))
 
         for troop in troops:
             if troop.wants_marines - not_promised_marine > 0\
@@ -318,12 +330,41 @@ class MyAgent(ScaiBackbone):
 
                 barrack = get_closest_unit(
                     list(filter(lambda b: b.is_idle, barracks)),
-                    troop.target)
+                    troop.target_pos)
 
                 if barrack:
                     barrack.train(marine)
 
             not_promised_marine -= troop.wants_marines
+
+        self.should_train_marines = []
+
+    # ZW
+    def train_tank(self):
+        """Train tanks if more are required."""
+
+        tank = UnitType(UNIT_TYPEID.TERRAN_SIEGETANK, self)
+
+        if can_afford(self, tank):
+            factories = self.should_train_tanks
+
+            # To stop overflow of produce
+            not_promised_tanks = len(list(filter(
+                lambda b: b.is_constructing(tank), self.get_my_units())))
+
+            for troop in troops:
+                if troop.wants_tanks - not_promised_tanks > 0:
+
+                    factory = get_closest_unit(
+                        list(filter(lambda b: b.is_idle, factories)),
+                        troop.target_pos)
+
+                    if factory:
+                        factory.train(tank)
+
+                not_promised_tanks -= troop.wants_tanks
+
+        self.should_train_tanks = []
 
     def squared_distance_p2d(self, p1: Point2D, p2: Point2D) -> float:
         """Gives the squared distance between two Point2D points"""
