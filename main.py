@@ -31,7 +31,8 @@ class MyAgent(ScaiBackbone):
     def on_step(self):
         """Called each cycle, passed from IDABot.on_step()."""
         ScaiBackbone.on_step(self)
-        self.trigger_events_for_units()
+        self.trigger_events_for_all_units()
+        self.trigger_events_for_my_units()
 
         print_debug(self)
 
@@ -206,6 +207,51 @@ class MyAgent(ScaiBackbone):
 
     remember_these: List[Unit] = []
     remember_these_completed: List[Unit] = []
+
+    def trigger_events_for_my_units(self):
+        """Find bot units with special conditions and activate triggers for them."""
+        temp_remember_these = self.remember_mine.copy()
+        # Checks for new units
+        for unit in self.get_my_units():
+            if unit not in temp_remember_these:
+                # A new unit is discovered
+                if unit.is_alive and unit.is_completed:
+                    self.remember_mine.append(unit)
+                    self.on_new_my_unit(unit)
+            else:
+                # A remembered unit is found
+                if unit.is_alive:
+                    temp_remember_these.remove(unit)
+                    # If idle call on_idle_unit()
+                    if unit.is_idle:
+                        self.on_idle_my_unit(unit)
+
+        for remembered_unit in temp_remember_these:
+            # A remembered unit is not found
+            if not remembered_unit.is_alive:
+                self.on_lost_my_unit(remembered_unit)
+                self.remember_mine.remove(remembered_unit)
+
+    def trigger_events_for_all_units(self):
+        """Find all units with special conditions and activate triggers for them."""
+        temp_remember_these = self.remember_these.copy()
+        # Checks for new units
+        for unit in self.get_all_units():
+            if unit not in temp_remember_these:
+                # A new unit is discovered
+                if unit.is_alive and self.map_tools.is_explored(unit.position):
+                    self.remember_these.append(unit)
+                    self.on_discover_unit(unit)
+            else:
+                # A remembered unit is found
+                if unit.is_alive:
+                    temp_remember_these.remove(unit)
+
+        for remembered_unit in temp_remember_these:
+            # A remembered unit is not found
+            if not remembered_unit.is_alive:
+                self.on_lost_unit(remembered_unit)
+                self.remember_these.remove(remembered_unit)
 
     def trigger_events_for_units(self):
         """Find units with special conditions and activate triggers for them."""

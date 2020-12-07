@@ -83,6 +83,7 @@ class ScaiBackbone(IDABot):
         IDABot.__init__(self)
         self.id = None
         self.remember_these = []
+        self.remember_mine = []
         self.should_train_marines = []
         self.should_train_tanks = []
         self.scout_path = []
