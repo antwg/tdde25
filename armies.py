@@ -31,6 +31,8 @@ class Troop:
     # under_attack: bool  - If troop is under attack or not
     # is_attackers: bool  - If troop is attacking or not
 
+    enemy_bases: List = []
+
     # ---------- EVENTS ----------
     # These are functions triggered by different events. Most are
     # triggered by MyAgent
@@ -49,6 +51,7 @@ class Troop:
         self.not_reached_target = []
         self.under_attack = False
         self.is_attackers = is_attackers
+        self.enemy_bases = []
 
         if is_attackers:
             self.marines_capacity = 12

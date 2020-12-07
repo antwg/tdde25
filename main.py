@@ -24,12 +24,10 @@ class MyAgent(ScaiBackbone):
         create_workplace(self.base_location_manager
                          .get_player_starting_base_location(PLAYER_SELF), self)
 
-        # workplaces[0].max_number_of_barracks = 3
-        # workplaces[0].max_number_of_factories = 2
-
         # self.debug_give_all_resources()
 
         # self.points = []
+        self.scout()
 
     def on_step(self):
         """Called each cycle, passed from IDABot.on_step()."""
@@ -50,7 +48,6 @@ class MyAgent(ScaiBackbone):
         if self.should_train_tanks:
             self.train_tank()
         self.expansion()
-        # self.scout()
 
     def get_coords(self):
         """Prints position of all workers"""
@@ -83,6 +80,7 @@ class MyAgent(ScaiBackbone):
         # remove scout from scouts list
         if unit in scouts:
             remove_scout(unit)
+            self.scout()
 
     def on_idle_my_unit(self, unit: Unit):
         """Called each time a unit is idle."""
@@ -93,6 +91,9 @@ class MyAgent(ScaiBackbone):
         work = find_unit_workplace(unit)
         if work:
             work.on_idle_my_unit(unit, self)
+
+        if unit in scouts and unit.is_alive:
+            self.scout()
 
     def on_new_my_unit(self, unit: Unit):
         """Called each time a new unit is noticed."""
@@ -146,11 +147,12 @@ class MyAgent(ScaiBackbone):
         # add commandcenter to workplace at the end
         elif unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_COMMANDCENTER:
             add_to_workplace = True
-            if len(workplaces) == 3:
+            if len(workplaces) == 2:
+                self.scout()
                 if self.side() == 'right':
-                    create_troop_attacking(Point2D(114, 46))
+                    create_troop_attacking(Point2D(108, 55))
                 else:
-                    create_troop_attacking(Point2D(37, 121))
+                    create_troop_attacking(Point2D(46, 121))
 
         # adds factory to workplace, then tries to build techlab        
         elif unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_FACTORY:
@@ -181,8 +183,10 @@ class MyAgent(ScaiBackbone):
                 if workplace.location.contains_position(unit.position):
                     workplace.add_geyser(unit)
 
-        # elif unit.unit_type.unit_typeid in grounded_command_centers_TYPEIDS \
-        #    and unit.player == PLAYER_ENEMY:
+        elif unit.unit_type.unit_typeid in grounded_command_centers_TYPEIDS \
+            and unit.player == PLAYER_ENEMY:
+            print("base found")
+            Troop.enemy_bases.append(unit)
 
     def on_lost_unit(self, unit: Unit):
         """Called when a unit is lost, even when lost_my_unit."""
@@ -224,14 +228,19 @@ class MyAgent(ScaiBackbone):
     # DP
     def scout(self):
         """Finds suitable scout (miner) that checks all base locations based on chords"""
-        if len(defenders) >= 1:
-            if not scouts:
-                # Finds and adds scout to scouts
-                workplaces[-1].get_scout()
+        if len(defenders) > 1:
             if not all_base_chords:
                 # Gets all base chords
                 for cords in choke_point_dict:
                     all_base_chords.append(cords)
+
+            if not scouts:
+                # Finds and adds scout to scouts
+                scout = workplaces[-1].get_scout()
+                if scout:
+                    scout.move(self.closest_base(scout.position, all_base_chords))
+                else:
+                    self.scout()
 
             if len(all_base_chords) > 0:
                 scout = scouts[0]
