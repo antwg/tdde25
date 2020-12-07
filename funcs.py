@@ -16,14 +16,23 @@ terran_buildings_ids = [
 ]
 
 
-def get_closest_unit(units: Iterator[Unit], position: Point2D):
+def get_closest_unit(units: Iterator[Unit], position: Point2D) -> Unit:
     """Get closest unit in ist to position."""
+    return get_closest([(unit.position, unit) for unit in units], position)
+
+
+def get_closest(items: List[tuple], position: Point2D):
+    """Get closest object in tuples to given point where the tuples first
+    element is it's position and the second is the object.
+    """
     distance = 0
     closest = None
-    for unit in units:
-        if not closest or distance > unit.position.dist(position):
-            distance = unit.position.dist(position)
-            closest = unit
+    for item in items:
+        if not closest or distance > position.squared_dist(item[0]):
+            distance = position.squared_dist(item[0])
+            if distance == 0:
+                return item[1]
+            closest = item[1]
     return closest
 
 

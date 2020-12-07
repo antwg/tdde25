@@ -2,7 +2,7 @@ import os
 import inspect
 from math import sqrt
 
-from typing import Optional
+from typing import Optional, List
 from library import *
 
 import personal
@@ -76,12 +76,18 @@ class ScaiBackbone(IDABot):
 
     id: int  # The value of owner in it's units that corresponds to this player
 
+    scout_path: List[Point2D]  # Path for scout
+    scout_index: int  # Where in scout_path the scout has visited
+
     def __init__(self):
         IDABot.__init__(self)
         self.id = None
         self.remember_these = []
+        self.remember_mine = []
         self.should_train_marines = []
         self.should_train_tanks = []
+        self.scout_path = []
+        self.scout_index = 0
 
     def on_game_start(self):
         IDABot.on_game_start(self)

@@ -1,35 +1,46 @@
-from typing import Union, Sequence
+from typing import Union, Sequence, Callable
 
 from library import *
 
 from scai_backbone import siege_tanks_TYPEIDS
 
 from workplace import *
+
 global bunker_marine
 
 
 # ZW
 class Troop:
     """A collection of military units."""
-    # __target: Point2D  - Common target for all units in troop
+    __target: Point2D  # Common target for all units in troop
 
-    # marines: List[Unit] - All marines in this troop
-    # tanks: List[Unit]   - All siege tanks in this troop
-    # bunkers: Dict[Unit, List[Unit]]  - All bunkers in this troop and the marines within
-    # others: List[Unit]  - All other units in this troop
+    # ___Job_list___
+    marines: List[Unit]  # All marines in this troop
+    tanks: List[Unit]  # All siege tanks in this troop
+    bunkers: Dict[Unit, List[Unit]]  # All bunkers in this troop and the marines within
+    others: List[Unit]  # All other units in this troop
+    # --------------
 
-    # reached_target: List[Unit]  - All units that have reached target
-
-    marines_capacity: int = 8  # How many marines this troop is asking for
-    tanks_capacity: int = 2    # How many tanks this troop is asking for
-
+    # Class constants
+    marines_capacity: int = 8  # How many marines a defending troop is asking for
+    tanks_capacity: int = 2  # How many tanks a defending troop is asking for
+    marines_capacity_atk: int = 12  # How many marines an attacking troop is asking for
+    tanks_capacity_atk: int = 4  # How many tanks a attacking troop is asking for
     target_radius: int = 7  # How close a unit must be to a target to be there
 
-    # tanks_siege: List[Unit]   - All siege tanks in siegemode in this troop
+    # Unitlist for those in special states
+    reached_target: List[Unit]  # All units that have reached target
+    tanks_siege: List[Unit]  # All siege tanks in siegemode in this troop
 
-    # __order: Callable  - A function that moves unit as demanded
-    # under_attack: bool  - If troop is under attack or not
-    # is_attackers: bool  - If troop is attacking or not
+    # Statehandlers
+    __order: Callable  # A function that moves unit as demanded
+    under_attack: bool  # If troop is under attack or not
+    is_attackers: bool  # If troop is attacking or not
+    committed_attackers: bool  # - If troop will request more troops or not
+
+    # (Attacking) Troop targets
+    enemy_bases: List[BaseLocation] = []  # All potential enemy bases for attackers to attack
+    enemy_structures: List[BaseLocation] = []  # All known enemy structures that needs to be destroyed to win
 
     enemy_bases: List = []
 
@@ -51,11 +62,12 @@ class Troop:
         self.not_reached_target = []
         self.under_attack = False
         self.is_attackers = is_attackers
+        self.committed_attackers = False
         self.enemy_bases = []
 
         if is_attackers:
-            self.marines_capacity = 12
-            self.tanks_capacity = 4
+            self.marines_capacity = self.marines_capacity_atk
+            self.tanks_capacity = self.tanks_capacity_atk
 
         self.set_target(position)
 
@@ -71,20 +83,22 @@ class Troop:
         """Called each time a member is idle."""
         if unit in self.not_reached_target:
             if self.nearby_target(unit):
-                self.on_member_reach_target(unit)
                 self.not_reached_target.remove(unit)
+                self.on_member_reach_target(unit)
             elif unit in self.tanks_siege:
-                # TODO: HAVE SIEGE TANKS UNMORPH
-                # unit.ability(ABILITY_ID.MORPH_UNSIEGE)
+                unit.ability(ABILITY_ID.MORPH_UNSIEGE)
                 self.tanks_siege.remove(unit)
             else:
                 self.unit_execute_order(unit)
 
     def on_member_reach_target(self, unit: Unit):
         """A member reaches target for first time."""
+        if not self.not_reached_target and self.committed_attackers:
+            self.try_to_win()
+
         if unit in self.tanks and unit not in self.tanks_siege:
-            # TODO: HAVE SIEGE TANKS MORPH
-            # unit.ability(ABILITY_ID.MORPH_SIEGEMODE)
+            # TODO: HAVE SIEGE TANKS MORPH PROPERLY
+            unit.ability(ABILITY_ID.MORPH_SIEGEMODE)
             self.tanks_siege.append(unit)
         elif unit in self.marines:
             for bunker, occupants in self.bunkers.items():
@@ -157,6 +171,9 @@ class Troop:
 
             self.not_reached_target.append(unit)
 
+            if self.satisfied and self.is_attackers:
+                self.committed_attackers = True
+
     def remove(self, unit: Unit) -> None:
         """Handles units that are to be removed from troop."""
         if unit in self.marines:
@@ -202,9 +219,9 @@ class Troop:
         workplace = closest_workplace(location)
 
         if can_afford(bot, bunker) \
-                and not currently_building(bot, UNIT_TYPEID.TERRAN_BUNKER)\
+                and not currently_building(bot, UNIT_TYPEID.TERRAN_BUNKER) \
                 and bot.have_one(UNIT_TYPEID.TERRAN_BARRACKS) \
-                and not workplace.is_building_unittype(bunker)\
+                and not workplace.is_building_unittype(bunker) \
                 and not self.bunkers:
             position = bot.building_placer.get_build_location_near(
                 location.to_i(), bunker)
@@ -227,13 +244,23 @@ class Troop:
             marine.right_click(bunker)
             self.bunkers[bunker].append(marine)
 
+    # ZW
+    def try_to_win(self):
+        """Attackers will try to kill all enemy units."""
+        if self.enemy_structures:
+            # Attack closest structure
+            self.march_units(get_closest(
+                [(unit.position, unit.position) for unit in self.enemy_structures],
+                self.target_pos))
+
     # ---------- PROPERTIES ----------
     # Values that are trivial calculations but important for the object
 
     @property
     def satisfied(self):
         """Return True if the troop wants more units."""
-        return self.wants_marines <= 0 and self.wants_tanks <= 0
+        return (self.committed_attackers or
+                self.wants_marines <= 0 and self.wants_tanks <= 0)
 
     @property
     def have_all_reached_target(self):
@@ -262,6 +289,30 @@ class Troop:
         """Returns the target position."""
         return self.__target if isinstance(self.__target, Point2D) \
             else self.__target.position
+
+    # ---------- CLASS METHODS ----------
+    # Methods relevant to the class rather then any instance of it.
+    # Focused on handling enemy targets for troops.
+
+    @classmethod
+    def found_enemy_structure(cls, unit: Unit, bot: IDABot):
+        """Adds target structure to Troop targets."""
+        if not unit.is_cloaked:
+            cls.enemy_structures.append(unit)
+            for base in bot.base_location_manager.base_locations:
+                if base.contains_position(unit.position) \
+                        and base not in cls.enemy_bases:
+                    cls.enemy_bases.append(base)
+
+    @classmethod
+    def lost_enemy_structure(cls, unit: Unit, bot: IDABot):
+        """Removes target structure from Troop targets."""
+        cls.enemy_structures.remove(unit)
+
+        for base in cls.enemy_bases.copy():
+            if base.contains_position(unit) and \
+                    not base.is_occupied_by_player(PLAYER_ENEMY):
+                cls.enemy_bases.remove(base)
 
 # ========== END OF TROOP ==========
 

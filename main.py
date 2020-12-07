@@ -24,15 +24,15 @@ class MyAgent(ScaiBackbone):
         create_workplace(self.base_location_manager
                          .get_player_starting_base_location(PLAYER_SELF), self)
 
-        # self.debug_give_all_resources()
+        Troop.enemy_bases.append(self.base_location_manager.get_player_starting_base_location(PLAYER_ENEMY))
 
-        # self.points = []
-        self.scout()
+        self.scout_path = self.load_scout_path()
 
     def on_step(self):
         """Called each cycle, passed from IDABot.on_step()."""
         ScaiBackbone.on_step(self)
-        self.look_for_new_units()
+        self.trigger_events_for_all_units()
+        self.trigger_events_for_my_units()
 
         print_debug(self)
 
@@ -47,7 +47,11 @@ class MyAgent(ScaiBackbone):
             self.train_marine()
         if self.should_train_tanks:
             self.train_tank()
-        self.expansion()
+        if not scouts:
+            potential = random.choice(workplaces).get_suitable_worker_and_remove()
+            if potential:
+                scouts.append(potential)
+        # self.scout()
 
     def get_coords(self):
         """Prints position of all workers"""
@@ -92,8 +96,11 @@ class MyAgent(ScaiBackbone):
         if work:
             work.on_idle_my_unit(unit, self)
 
-        if unit in scouts and unit.is_alive:
-            self.scout()
+        if unit in scouts:
+            if unit.position.dist(self.scout_path[self.scout_index]) < 3:
+                self.scout_index = (self.scout_index + 1) % len(self.scout_path)
+
+            unit.move(self.scout_path[self.scout_index])
 
     def on_new_my_unit(self, unit: Unit):
         """Called each time a new unit is noticed."""
@@ -171,6 +178,9 @@ class MyAgent(ScaiBackbone):
             if work:
                 work.add(unit)
 
+        if len(workplaces) < 3:
+            self.expansion()
+
     def on_discover_unit(self, unit: Unit):
         """Called when a unit is discovered, even when new_my_unit."""
         if unit.unit_type.unit_typeid in minerals_TYPEIDS and unit.minerals_left_in_mineralfield > 0:
@@ -183,10 +193,8 @@ class MyAgent(ScaiBackbone):
                 if workplace.location.contains_position(unit.position):
                     workplace.add_geyser(unit)
 
-        elif unit.unit_type.unit_typeid in grounded_command_centers_TYPEIDS \
-            and unit.player == PLAYER_ENEMY:
-            print("base found")
-            Troop.enemy_bases.append(unit)
+        if unit.player == PLAYER_ENEMY and unit.unit_type.is_building:
+            Troop.found_enemy_structure(unit, self)
 
     def on_lost_unit(self, unit: Unit):
         """Called when a unit is lost, even when lost_my_unit."""
@@ -195,40 +203,116 @@ class MyAgent(ScaiBackbone):
                 if unit in workplace.mineral_fields:
                     workplace.mineral_fields.remove(unit)
 
-    remember_these: List[Unit] = []
+        if unit.player == PLAYER_ENEMY and unit.unit_type.is_building:
+            Troop.lost_enemy_structure(unit, self)
 
-    def look_for_new_units(self):
-        """Find units that has not been noticed by the bot."""
+    remember_these: List[Unit] = []
+    remember_these_completed: List[Unit] = []
+
+    def trigger_events_for_my_units(self):
+        """Find bot units with special conditions and activate triggers for them."""
+        temp_remember_these = self.remember_mine.copy()
+        # Checks for new units
+        for unit in self.get_my_units():
+            if unit not in temp_remember_these:
+                # A new unit is discovered
+                if unit.is_alive and unit.is_completed:
+                    self.remember_mine.append(unit)
+                    self.on_new_my_unit(unit)
+            else:
+                # A remembered unit is found
+                if unit.is_alive:
+                    temp_remember_these.remove(unit)
+                    # If idle call on_idle_unit()
+                    if unit.is_idle:
+                        self.on_idle_my_unit(unit)
+
+        for remembered_unit in temp_remember_these:
+            # A remembered unit is not found
+            if not remembered_unit.is_alive:
+                self.on_lost_my_unit(remembered_unit)
+                self.remember_mine.remove(remembered_unit)
+
+    def trigger_events_for_all_units(self):
+        """Find all units with special conditions and activate triggers for them."""
+        temp_remember_these = self.remember_these.copy()
+        # Checks for new units
+        for unit in self.get_all_units():
+            if not unit.is_cloaked:
+                continue
+            self.handle_found_unit(unit, temp_remember_these)
+
+        for remembered_unit in temp_remember_these:
+            # A remembered unit is not found
+            if not remembered_unit.is_alive:
+                self.on_lost_unit(remembered_unit)
+                self.remember_these.remove(remembered_unit)
+
+    def handle_found_unit(self, unit: Unit, remember: List[Unit]):
+        if unit not in remember:
+            self.not_remember_unit(unit, remember)
+        else:
+            self.do_remember_unit(unit, remember)
+
+    def not_remember_unit(self, unit: Unit, remember: List[Unit]):
+        # A new unit is discovered
+        if unit.is_alive and unit.is_cloaked:
+            self.remember_these.append(unit)
+            self.on_discover_unit(unit)
+
+    def do_remember_unit(self, unit: Unit, remember: List[Unit]):
+        # A new unit is discovered
+        if unit.is_alive:
+            remember.remove(unit)
+
+    # TODO: Delete, when 100% certain it's safe
+    def trigger_events_for_units(self):
+        """Find units with special conditions and activate triggers for them."""
         temp_remember_these = self.remember_these.copy()
         # Checks for new units
         for unit in self.get_all_units():
             if unit not in temp_remember_these:
-                if unit.is_completed and unit.is_alive and unit.is_valid \
-                        and self.map_tools.is_explored(unit.position):
+                # A new unit is discovered
+                if unit.is_alive and self.map_tools.is_explored(unit.position):
                     self.remember_these.append(unit)
-                    if unit.owner == self.id:
-                        self.on_new_my_unit(unit)
+
                     self.on_discover_unit(unit)
 
+                    # If unit is active (completed)
+                    if unit.is_completed:
+                        self.remember_these_completed.append(unit)
+                        if unit.owner == self.id:
+                            self.on_new_my_unit(unit)
+
             else:
-                if unit.is_completed and unit.is_alive and unit.is_valid:
+                # A remembered unit is found
+                if unit.is_alive:
                     temp_remember_these.remove(unit)
+
+                    if unit not in self.remember_these_completed \
+                            and unit.is_completed:
+                        self.remember_these_completed.append(unit)
+                        if unit.owner == self.id:
+                            self.on_new_my_unit(unit)
+
                     # If idle call on_idle_unit()
                     if unit.is_idle and unit.owner == self.id:
                         self.on_idle_my_unit(unit)
 
         for remembered_unit in temp_remember_these:
-            if not(remembered_unit.is_completed and remembered_unit.is_alive
-                   and remembered_unit.is_valid):
+            # A remembered unit is not found
+            if not remembered_unit.is_alive:
                 if remembered_unit.owner == self.id:
                     self.on_lost_my_unit(remembered_unit)
                 self.on_lost_unit(remembered_unit)
                 self.remember_these.remove(remembered_unit)
+                if remembered_unit in self.remember_these_completed:
+                    self.remember_these_completed.remove(remembered_unit)
 
     # DP
     def scout(self):
-        """Finds suitable scout (miner) that checks all base locations based on chords"""
-        if len(defenders) > 1:
+        """Finds suitable scout (miner) that checks all base locations based on chords."""
+        if len(defenders) >= 1:
             if not all_base_chords:
                 # Gets all base chords
                 for cords in choke_point_dict:
@@ -247,8 +331,8 @@ class MyAgent(ScaiBackbone):
                 closest_base = self.closest_base(scout.position, all_base_chords)
                 # Move to closest base chord. If there or idle, go to next site.
                 if scout.is_idle or scout.position.dist(Point2D(closest_base.x, closest_base.y)) <= 1.5:
-                    scout.move(closest_base)
                     all_base_chords.remove((closest_base.x, closest_base.y))
+                    scout.move(closest_base)
 
     def closest_base(self, pos: Point2D, locations):
         """Checks the closest base_location to a position"""
@@ -416,6 +500,29 @@ class MyAgent(ScaiBackbone):
             point = self.choke_points((location.x, location.y))
             create_troop_defending(point)
 
+    def load_scout_path(self):
+        """Load scout path attribute od MyAgent for the scout."""
+
+        def next_scout_point(current: Point2D, rest: List[Point2D]):
+            if not rest:
+                return []
+            else:
+                closest = get_closest([(p, p) for p in rest], current)
+                return [closest] + next_scout_point(
+                    closest, list(filter(lambda p: p != closest, rest)))
+
+        return next_scout_point(
+            self.start_location,
+            [b.position for b in self.base_location_manager.base_locations])
+
 
 if __name__ == "__main__":
+    import cProfile
+
+    pr = cProfile.Profile()
+    pr.enable()
     MyAgent.bootstrap()
+    pr.disable()
+    # after your program ends
+    pr.print_stats(sort="time")
+
