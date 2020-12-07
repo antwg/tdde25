@@ -14,7 +14,6 @@ def print_debug(bot: IDABot):
     print_unit_overview(bot)
 
 
-    # tihi
     # DP
 def print_debug_my_units(bot: IDABot):
     """Prints < UnitType >  id: < id >  i: < enumereringsindex > for the players units """

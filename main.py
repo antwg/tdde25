@@ -476,11 +476,7 @@ class MyAgent(ScaiBackbone):
         location = self.base_location_manager.get_next_expansion(PLAYER_SELF).\
             depot_position
 
-        tot_marines = 0
-        for troop in defenders:
-            tot_marines += len(troop.marines)
-
-        if (tot_marines >= len(workplaces) * 8)\
+        if self.troops_full()\
                 and can_afford(self, command_center_type)\
                 and not currently_building(self, command_center)\
                 and closest_workplace(location).get_suitable_builder():
@@ -492,7 +488,6 @@ class MyAgent(ScaiBackbone):
                 new_workplace = create_workplace\
                     (self.base_location_manager.get_next_expansion(PLAYER_SELF),
                      self)
-
                 new_workplace.add(worker)
                 new_workplace.have_worker_construct(command_center_type,
                                                     location)
