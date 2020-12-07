@@ -47,8 +47,6 @@ class MyAgent(ScaiBackbone):
             self.train_marine()
         if self.should_train_tanks:
             self.train_tank()
-        if len(workplaces) < 3:
-            self.expansion()
         if not scouts:
             potential = random.choice(workplaces).get_suitable_worker_and_remove()
             if potential:
@@ -180,6 +178,9 @@ class MyAgent(ScaiBackbone):
             if work:
                 work.add(unit)
 
+        if len(workplaces) < 3:
+            self.expansion()
+
     def on_discover_unit(self, unit: Unit):
         """Called when a unit is discovered, even when new_my_unit."""
         if unit.unit_type.unit_typeid in minerals_TYPEIDS and unit.minerals_left_in_mineralfield > 0:
@@ -237,15 +238,9 @@ class MyAgent(ScaiBackbone):
         temp_remember_these = self.remember_these.copy()
         # Checks for new units
         for unit in self.get_all_units():
-            if unit not in temp_remember_these:
-                # A new unit is discovered
-                if unit.is_alive and self.map_tools.is_explored(unit.position):
-                    self.remember_these.append(unit)
-                    self.on_discover_unit(unit)
-            else:
-                # A remembered unit is found
-                if unit.is_alive:
-                    temp_remember_these.remove(unit)
+            if not unit.is_cloaked:
+                continue
+            self.handle_found_unit(unit, temp_remember_these)
 
         for remembered_unit in temp_remember_these:
             # A remembered unit is not found
@@ -253,6 +248,24 @@ class MyAgent(ScaiBackbone):
                 self.on_lost_unit(remembered_unit)
                 self.remember_these.remove(remembered_unit)
 
+    def handle_found_unit(self, unit: Unit, remember: List[Unit]):
+        if unit not in remember:
+            self.not_remember_unit(unit, remember)
+        else:
+            self.do_remember_unit(unit, remember)
+
+    def not_remember_unit(self, unit: Unit, remember: List[Unit]):
+        # A new unit is discovered
+        if unit.is_alive and unit.is_cloaked:
+            self.remember_these.append(unit)
+            self.on_discover_unit(unit)
+
+    def do_remember_unit(self, unit: Unit, remember: List[Unit]):
+        # A new unit is discovered
+        if unit.is_alive:
+            remember.remove(unit)
+
+    # TODO: Delete, when 100% certain it's safe
     def trigger_events_for_units(self):
         """Find units with special conditions and activate triggers for them."""
         temp_remember_these = self.remember_these.copy()
@@ -511,5 +524,5 @@ if __name__ == "__main__":
     MyAgent.bootstrap()
     pr.disable()
     # after your program ends
-    pr.print_stats(sort="calls")
+    pr.print_stats(sort="time")
 
