@@ -26,7 +26,7 @@ class MyAgent(ScaiBackbone):
 
         Troop.enemy_bases.append(self.base_location_manager.get_player_starting_base_location(PLAYER_ENEMY))
 
-        self.scout_path = self.load_scout_path()
+        # self.scout_path = self.load_scout_path()
 
     def on_step(self):
         """Called each cycle, passed from IDABot.on_step()."""
@@ -47,11 +47,11 @@ class MyAgent(ScaiBackbone):
             self.train_marine()
         if self.should_train_tanks:
             self.train_tank()
-        if not scouts:
-            potential = random.choice(workplaces).get_suitable_worker_and_remove()
-            if potential:
-                scouts.append(potential)
-        # self.scout()
+
+        # if not scouts:
+        #     potential = random.choice(workplaces).get_suitable_worker_and_remove()
+        #     if potential:
+        #         scouts.append(potential)
 
     def get_coords(self):
         """Prints position of all workers"""
@@ -97,10 +97,11 @@ class MyAgent(ScaiBackbone):
             work.on_idle_my_unit(unit, self)
 
         if unit in scouts:
-            if unit.position.dist(self.scout_path[self.scout_index]) < 3:
-                self.scout_index = (self.scout_index + 1) % len(self.scout_path)
+            self.scout()
 
-            unit.move(self.scout_path[self.scout_index])
+        #     if unit.position.dist(self.scout_path[self.scout_index]) < 3:
+        #         self.scout_index = (self.scout_index + 1) % len(self.scout_path)
+            # unit.move(self.scout_path[self.scout_index])
 
     def on_new_my_unit(self, unit: Unit):
         """Called each time a new unit is noticed."""
@@ -265,50 +266,6 @@ class MyAgent(ScaiBackbone):
         if unit.is_alive:
             remember.remove(unit)
 
-    # TODO: Delete, when 100% certain it's safe
-    def trigger_events_for_units(self):
-        """Find units with special conditions and activate triggers for them."""
-        temp_remember_these = self.remember_these.copy()
-        # Checks for new units
-        for unit in self.get_all_units():
-            if unit not in temp_remember_these:
-                # A new unit is discovered
-                if unit.is_alive and self.map_tools.is_explored(unit.position):
-                    self.remember_these.append(unit)
-
-                    self.on_discover_unit(unit)
-
-                    # If unit is active (completed)
-                    if unit.is_completed:
-                        self.remember_these_completed.append(unit)
-                        if unit.owner == self.id:
-                            self.on_new_my_unit(unit)
-
-            else:
-                # A remembered unit is found
-                if unit.is_alive:
-                    temp_remember_these.remove(unit)
-
-                    if unit not in self.remember_these_completed \
-                            and unit.is_completed:
-                        self.remember_these_completed.append(unit)
-                        if unit.owner == self.id:
-                            self.on_new_my_unit(unit)
-
-                    # If idle call on_idle_unit()
-                    if unit.is_idle and unit.owner == self.id:
-                        self.on_idle_my_unit(unit)
-
-        for remembered_unit in temp_remember_these:
-            # A remembered unit is not found
-            if not remembered_unit.is_alive:
-                if remembered_unit.owner == self.id:
-                    self.on_lost_my_unit(remembered_unit)
-                self.on_lost_unit(remembered_unit)
-                self.remember_these.remove(remembered_unit)
-                if remembered_unit in self.remember_these_completed:
-                    self.remember_these_completed.remove(remembered_unit)
-
     # DP
     def scout(self):
         """Finds suitable scout (miner) that checks all base locations based on chords."""
@@ -323,8 +280,6 @@ class MyAgent(ScaiBackbone):
                 scout = workplaces[-1].get_scout()
                 if scout:
                     scout.move(self.closest_base(scout.position, all_base_chords))
-                else:
-                    self.scout()
 
             if len(all_base_chords) > 0:
                 scout = scouts[0]
@@ -364,12 +319,6 @@ class MyAgent(ScaiBackbone):
                     trainer.train(scv_type)
                     count_needed -= 1
                     ccs.remove(trainer)
-
-    def currently_building(self, unit_type): # AW
-        """"Checks if a unit is currently being built"""
-        # TODO: Rewrite/Delete?
-        return any([unit.build_percentage < 1 for unit in
-                    get_my_type_units(self, unit_type)])
 
     # ZW
     def have_one(self, utid: Union[UNIT_TYPEID, UnitType]) -> bool:
@@ -476,7 +425,7 @@ class MyAgent(ScaiBackbone):
         location = self.base_location_manager.get_next_expansion(PLAYER_SELF).\
             depot_position
 
-        if self.troops_full()\
+        if self.troops_full() \
                 and can_afford(self, command_center_type)\
                 and not currently_building(self, command_center)\
                 and closest_workplace(location).get_suitable_builder():
@@ -485,15 +434,15 @@ class MyAgent(ScaiBackbone):
             worker = workplace.get_suitable_worker_and_remove()
 
             if worker:
-                new_workplace = create_workplace\
+                new_workplace = create_workplace \
                     (self.base_location_manager.get_next_expansion(PLAYER_SELF),
                      self)
                 new_workplace.add(worker)
                 new_workplace.have_worker_construct(command_center_type,
                                                     location)
 
-            point = self.choke_points((location.x, location.y))
-            create_troop_defending(point)
+                point = self.choke_points((location.x, location.y))
+                create_troop_defending(point)
 
     def load_scout_path(self):
         """Load scout path attribute od MyAgent for the scout."""
