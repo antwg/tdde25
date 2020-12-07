@@ -76,8 +76,8 @@ class ScaiBackbone(IDABot):
 
     id: int  # The value of owner in it's units that corresponds to this player
 
-    scout_path: List[Point2D]  # Path for scout
-    scout_index: int  # Where in scout_path the scout has visited
+    # scout_path: List[Point2D]  # Path for scout
+    # scout_index: int  # Where in scout_path the scout has visited
 
     def __init__(self):
         IDABot.__init__(self)

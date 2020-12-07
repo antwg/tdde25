@@ -7,7 +7,7 @@ from copy import deepcopy
 from extra import *
 from funcs import *
 
-from scai_backbone import refineries_TYPEIDS, minerals_TYPEIDS
+from scai_backbone import *
 
 
 # DP
@@ -45,10 +45,14 @@ class Workplace:
     def on_step(self, bot: IDABot) -> None:
         """Called each on_Step() of IDABot."""
         self.update_workers(bot)
-        self.build_supply_depot(bot)
-        self.build_barrack(bot)
-        self.build_factory(bot)
-        self.build_refinery(bot)
+
+        if self.command_centers:
+            self.build_supply_depot(bot)
+            self.build_barrack(bot)
+            self.build_factory(bot)
+            self.build_refinery(bot)
+        else:
+            self.build_command_center(bot)
 
     def on_idle_my_unit(self, unit: Unit, bot: IDABot) -> None:
         """Called each time for a worker that is idle in this workplace."""
@@ -282,6 +286,18 @@ class Workplace:
                         self.have_worker_construct(refinery_type, geyser)
                         break
 
+    # ZW
+    def build_command_center(self, bot: IDABot) -> None:
+        """Builds a command center when necessary."""
+        command_type = UnitType(UNIT_TYPEID.TERRAN_COMMANDCENTER, bot)
+
+        if can_afford(bot, command_type) \
+                and not self.command_centers \
+                and not self.is_building_unittype(command_type):
+            if len(self.workers) > 0:
+                position = self.location.depot_position
+                self.have_worker_construct(command_type, position)
+
     # DP
     def build_factory(self, bot: IDABot) -> None:
         """Builds a factory when necessary."""
@@ -351,6 +367,9 @@ class Workplace:
 
             elif unit.unit_type.unit_typeid in refineries_TYPEIDS:
                 self.add_refinery(unit)
+
+            elif unit.unit_type.unit_typeid in grounded_command_centers_TYPEIDS:
+                self.command_centers.append(unit)
 
             else:
                 self.others.append(unit)
