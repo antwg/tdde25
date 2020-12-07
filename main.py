@@ -152,7 +152,7 @@ class MyAgent(ScaiBackbone):
                 if self.side() == 'right':
                     create_troop_attacking(Point2D(108, 55))
                 else:
-                    create_troop_attacking(Point2D(46, 121))
+                    create_troop_attacking(Point2D(46, 117))
 
         # adds factory to workplace, then tries to build techlab        
         elif unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_FACTORY:
