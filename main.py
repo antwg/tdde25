@@ -46,7 +46,7 @@ class MyAgent(ScaiBackbone):
             self.train_marine()
         if self.should_train_tanks:
             self.train_tank()
-        if len(workplaces) < 1:
+        if len(workplaces) < 3:
             self.expansion()
         if not scouts:
             potential = random.choice(workplaces).get_suitable_worker_and_remove()
@@ -85,6 +85,7 @@ class MyAgent(ScaiBackbone):
         # remove scout from scouts list
         if unit in scouts:
             remove_scout(unit)
+            self.scout()
 
     def on_idle_my_unit(self, unit: Unit):
         """Called each time a unit is idle."""
@@ -154,11 +155,12 @@ class MyAgent(ScaiBackbone):
         # add commandcenter to workplace at the end
         elif unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_COMMANDCENTER:
             add_to_workplace = True
-            if len(workplaces) == 1:  # TODO: Revert to 3
+            if len(workplaces) == 2:
+                self.scout()
                 if self.side() == 'right':
-                    create_troop_attacking(Point2D(18, 55))
+                    create_troop_attacking(Point2D(108, 55))
                 else:
-                    create_troop_attacking(Point2D(46, 117))
+                    create_troop_attacking(Point2D(46, 121))
 
         # adds factory to workplace, then tries to build techlab        
         elif unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_FACTORY:
@@ -252,15 +254,20 @@ class MyAgent(ScaiBackbone):
     def scout(self):
         """Finds suitable scout (miner) that checks all base locations based on chords."""
         if len(defenders) >= 1:
-            if not scouts:
-                # Finds and adds scout to scouts
-                workplaces[-1].get_scout()
             if not all_base_chords:
                 # Gets all base chords
                 for cords in choke_point_dict:
                     all_base_chords.append(cords)
 
-            if scouts and len(all_base_chords) > 0:
+            if not scouts:
+                # Finds and adds scout to scouts
+                scout = workplaces[-1].get_scout()
+                if scout:
+                    scout.move(self.closest_base(scout.position, all_base_chords))
+                else:
+                    self.scout()
+
+            if len(all_base_chords) > 0:
                 scout = scouts[0]
                 closest_base = self.closest_base(scout.position, all_base_chords)
                 # Move to closest base chord. If there or idle, go to next site.

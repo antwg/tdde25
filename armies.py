@@ -42,6 +42,8 @@ class Troop:
     enemy_bases: List[BaseLocation] = []  # All potential enemy bases for attackers to attack
     enemy_structures: List[BaseLocation] = []  # All known enemy structures that needs to be destroyed to win
 
+    enemy_bases: List = []
+
     # ---------- EVENTS ----------
     # These are functions triggered by different events. Most are
     # triggered by MyAgent
@@ -61,6 +63,7 @@ class Troop:
         self.under_attack = False
         self.is_attackers = is_attackers
         self.committed_attackers = False
+        self.enemy_bases = []
 
         if is_attackers:
             self.marines_capacity = self.marines_capacity_atk
