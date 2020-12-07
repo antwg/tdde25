@@ -49,6 +49,7 @@ class Workplace:
         self.build_barrack(bot)
         self.build_factory(bot)
         self.build_refinery(bot)
+
     def on_idle_my_unit(self, unit: Unit, bot: IDABot) -> None:
         """Called each time for a worker that is idle in this workplace."""
         if unit in self.miners and self.mineral_fields:
@@ -177,7 +178,8 @@ class Workplace:
         lazy_builders = []
         for builder in self.builders:
             if builder.has_target and builder.target.unit_type.unit_typeid \
-                    in minerals_TYPEIDS:
+                    in minerals_TYPEIDS \
+                    or builder.is_idle:
                 lazy_builders.append(builder)
         for builder in lazy_builders:
             self.assign_worker_job(builder)
@@ -217,6 +219,7 @@ class Workplace:
         """Returns a suitable worker and removes it from the workplace."""
         worker = self.get_suitable_builder()
         if worker:
+            worker.stop()
             self.remove(worker)
         return worker
 
