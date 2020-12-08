@@ -97,7 +97,9 @@ def unit_assignment(bot: IDABot):
             assignment[barrack] = "barrack" + loyalty
 
         for troop in defenders:
-            for marine in troop.marines:
+            for marine in [marine for marine in troop.marines
+                           if any([marine not in troop.bunkers[bunker]
+                                   for bunker in troop.bunkers])]:
                 assignment[marine] = "defence"
             for tank in troop.tanks:
                 assignment[tank] = "defence"

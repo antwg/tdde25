@@ -45,7 +45,7 @@ class Troop:
 
     # ---------- EVENTS ----------
     # These are functions triggered by different events. Most are
-    # triggered by MyAgent
+    # triggered from MyAgent.
 
     def __init__(self, position: Point2D, is_attackers: bool = False):
         """Called when a new troop is being created. Note that no units are
@@ -231,7 +231,7 @@ class Troop:
         return free
 
     # ---------- MISC ----------
-    # Other needed functions
+    # Other needed functions.
 
     def build_bunker(self, bot: IDABot, location) -> None:  # AW
         """Builds a bunker when necessary."""

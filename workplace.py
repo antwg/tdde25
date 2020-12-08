@@ -16,10 +16,9 @@ class Workplace:
     location: BaseLocation  # The BaseLocation the workplace represent
 
     #  ___Job_list___
-    # jobs are roles that a unit can have within a workplace
+    # Jobs are roles that a unit can have within a workplace
 
     # SCVs:
-    workers: List[Unit]  # SCVs
     miners: List[Unit]  # Workers who collect minerals
     gasers: List[Unit]  # Workers who collect gas
     builders: List[Unit]  # Workers who construct
@@ -29,18 +28,21 @@ class Workplace:
     refineries: Dict[Unit, List[Unit]]  # The list contains all its gas collectors
     barracks: List[Unit]  # All barracks
     factories: List[Unit]  # All factories
-    factories_with_techlab: List[Unit]  # All factories with techlab, must first be in factories
 
-    # Other:
+    # Others:
     others: List[Unit]  # All other units in this workplace
     # ---------------
 
+    # Unit lists for units in special states
+    workers: List[Unit]  # All SCVs in a workplace
+    factories_with_techlab: List[Unit]  # All factories with a techlab, must be in factories
+
+    # Important information
     under_attack: bool  # If workplace is under attack or not
 
-    mineral_fields: List[Unit]  # All discovered mineral fields in workplace
-    geysers: List[Unit]         # All discovered geysers in workplace
-
-    builders_targets: Dict[Unit, tuple]  # Key is builder and Tuple is (what: UnitType, where: Point2DI)
+    # ---------- EVENTS ----------
+    # These are functions triggered by different events. Most are
+    # triggered from MyAgent
 
     def on_step(self, bot: IDABot) -> None:
         """Called each on_Step() of IDABot."""
@@ -74,6 +76,18 @@ class Workplace:
         elif unit in self.barracks:
             bot.should_train_marines.append(unit)
 
+    def on_building_completed(self, building: Unit) -> None:
+        """Called when a new building has been constructed."""
+        # print("done:", building)
+        for builder, target in self.builders_targets.items():
+            if target[1] == building.tile_position \
+                    and target[0] == building.unit_type:
+                # print("builder done:", builder)
+                self.remove_builder(builder)
+                self.assign_worker_job(builder)
+                break
+        # print("miss!")
+
     def __init__(self, location: BaseLocation, bot: IDABot):
         """Called when a new workplace is created. Note that a workplace
         is created from a BaseLocation and there should be max one at each.
@@ -105,13 +119,10 @@ class Workplace:
                     and location.contains_position(unit.position):
                 self.add_geyser(unit)
 
-    # DP
-    def get_scout(self) -> Union[Unit, None]:
-        """Returns a suitable scout (worker)"""
-        worker = self.get_suitable_worker_and_remove()
-        if worker:
-            add_scout(worker)
-        return worker
+    # ---------- JOB: MINER ----------
+    # Methods relevant for SCVs that gathers minerals in workplace.
+
+    mineral_fields: List[Unit]  # All discovered mineral fields in workplace
 
     # ZW
     def add_miner(self, worker: Unit) -> None:
@@ -125,6 +136,25 @@ class Workplace:
         """Removes a miner and handles necessary operations."""
         if worker in self.miners:
             self.miners.remove(worker)
+
+    @property
+    def miners_capacity(self) -> int:
+        """How many miners the workplace requires."""
+        return 2 * len(self.mineral_fields)
+
+    @property
+    def wants_miners(self) -> int:
+        """How many miners the workplace is missing."""
+        if not self.under_attack:
+            return max(self.miners_capacity - len(self.miners)
+                       - len(self.builders), 0)
+        else:
+            return 0
+
+    # ---------- JOB: GASER ----------
+    # Methods relevant for SCVs that gathers gas in workplace.
+
+    geysers: List[Unit]  # All discovered geysers in workplace
 
     # ZW
     def add_gaser(self, worker: Unit, refinery: Unit) -> None:
@@ -141,6 +171,24 @@ class Workplace:
             if worker in gasers:
                 self.refineries[refinery].remove(worker)
 
+    @property
+    def wants_gasers(self) -> int:
+        """How many gasers the workplace is missing."""
+        if not self.under_attack:
+            return max(self.gasers_capacity - len(self.gasers), 0)
+        else:
+            return 0
+
+    @property
+    def gasers_capacity(self) -> int:
+        """How many gasers the workplace requires."""
+        return 3 * len(self.refineries)
+
+    # ---------- JOB: BUILDER ----------
+    # Methods relevant for SCVs that are requested to build for workplace.
+
+    builders_targets: Dict[Unit, tuple]  # Key is builder and Tuple is (what: UnitType, where: Point2DI)
+
     # ZW
     def add_builder(self, worker: Unit) -> None:
         """Adds a builder and handles necessary operations."""
@@ -152,6 +200,56 @@ class Workplace:
         self.builders.remove(worker)
         if worker in self.builders_targets:
             del self.builders_targets[worker]
+
+    # ZW
+    def have_worker_construct(self, building: UnitType,
+                              position: Union[Point2DI, Unit]) -> None:
+        """Order workplace to try to construct building at given position."""
+        worker = self.get_suitable_builder()
+
+        if worker:
+            if isinstance(position, Point2DI):
+                build = lambda: worker.build(building, position)
+                target = (building, position)
+            elif isinstance(position, Unit):
+                build = lambda: worker.build_target(building, position)
+                target = (building, position.tile_position)
+            else:
+                print("'I can't build here!'-The building can't be constructed")
+                target = None
+                build = None
+
+            if target:
+                self.free_worker(worker)
+                self.add_builder(worker)
+                build()
+                self.builders_targets[worker] = target
+
+    def builders_targets_of_type(self, ut: UnitType) -> Dict[Unit, tuple]:
+        """Return all builder targets of given unitType."""
+        found = {}
+        for builder, builder_target in self.builders_targets.items():
+            if ut == builder_target[0]:
+                found[builder] = builder_target
+        return found
+
+    def has_build_target(self, building: Unit) -> bool:
+        """Check if workplace is trying to construct given unit."""
+        for target in self.builders_targets.values():
+            if building.unit_type == target[0] and building.tile_position\
+                    == target[1]:
+                return True
+        return False
+
+    def is_building_unittype(self, ut: UnitType) -> bool:
+        """Check if workplace is trying to construct unittype already."""
+        for target in self.builders_targets.values():
+            if target[0] == ut:
+                return True
+        return False
+
+    # ---------- GROUP: WORKER ----------
+    # Methods relevant for all SCVs in workplace
 
     # ZW
     def free_worker(self, worker: Unit) -> None:
@@ -195,22 +293,6 @@ class Workplace:
                         self.remove_miner(worker)
                         self.add_gaser(worker, refinery)
 
-    # ZW
-    def add_mineral_field(self, mineral_field: Unit):
-        """Add a mineral_field to the workplace."""
-        if mineral_field.minerals_left_in_mineralfield > 0 \
-                and not any(map(lambda mf: mineral_field == mf,
-                                self.mineral_fields)):
-            self.mineral_fields.append(mineral_field)
-
-    # ZW
-    def add_geyser(self, geyser: Unit):
-        """Add a geyser to the workplace."""
-        if geyser.gas_left_in_refinery \
-                and not any(map(lambda g: geyser == g,
-                                self.mineral_fields)):
-            self.geysers.append(geyser)
-
     # DP
     def get_suitable_builder(self) -> Union[Unit, None]:
         """Returns a suitable miner (worker)"""
@@ -227,17 +309,23 @@ class Workplace:
             self.remove(worker)
         return worker
 
-    def get_units(self) -> List[Unit]:
-        """Get all units in workplace."""
-        return (self.workers
-                + self.others
-                + self.barracks
-                + self.factories
-                + self.command_centers)
+    @property
+    def scv_capacity(self) -> int:
+        """How many scvs the workplace requires."""
+        return self.miners_capacity + self.gasers_capacity
 
-    def has_unit(self, unit: Unit) -> bool:
-        """Check if workplace has unit."""
-        return unit in self.get_units()
+    @property
+    def wants_scvs(self) -> int:
+        """How many scvs the workplace is missing."""
+        return self.wants_miners + self.wants_gasers
+
+    @property
+    def has_enough_scvs(self) -> bool:
+        """If the workplace needs any more scvs."""
+        return self.wants_scvs <= 0
+
+    # ---------- BUILD ----------
+    # Methods that builds structures.
 
     # AW
     def build_supply_depot(self, bot: IDABot) -> None:
@@ -335,6 +423,9 @@ class Workplace:
         else:
             raise Exception("Found location is bad.")
 
+    # ---------- HANDLERS ----------
+    # Methods that builds structures.
+
     # ZW
     def add(self, units: Union[Unit, Sequence[Unit]]) -> None:
         """Adds unit to workplace."""
@@ -408,6 +499,34 @@ class Workplace:
             if unit in self.command_centers:
                 self.command_centers.remove(unit)
 
+    def get_units(self) -> List[Unit]:
+        """Get all units in workplace."""
+        return (self.workers
+                + self.others
+                + self.barracks
+                + self.factories
+                + self.command_centers)
+
+    def has_unit(self, unit: Unit) -> bool:
+        """Check if workplace has unit."""
+        return unit in self.get_units()
+
+    # ZW
+    def add_mineral_field(self, mineral_field: Unit):
+        """Add a mineral_field to the workplace."""
+        if mineral_field.minerals_left_in_mineralfield > 0 \
+                and not any(map(lambda mf: mineral_field == mf,
+                                self.mineral_fields)):
+            self.mineral_fields.append(mineral_field)
+
+    # ZW
+    def add_geyser(self, geyser: Unit):
+        """Add a geyser to the workplace."""
+        if geyser.gas_left_in_refinery \
+                and not any(map(lambda g: geyser == g,
+                                self.mineral_fields)):
+            self.geysers.append(geyser)
+
     # DP
     def add_refinery(self, refinery) -> None:
         """Adds a refinery to the workplace (needs to be finished)."""
@@ -422,57 +541,6 @@ class Workplace:
             self.free_worker(worker)
             self.assign_worker_job(worker)
 
-    def has_build_target(self, building: Unit) -> bool:
-        """Check if workplace is trying to construct given unit."""
-        for target in self.builders_targets.values():
-            if building.unit_type == target[0] and building.tile_position\
-                    == target[1]:
-                return True
-        return False
-
-    def on_building_completed(self, building: Unit) -> None:
-        """Called when a new building has been constructed."""
-        # print("done:", building)
-        for builder, target in self.builders_targets.items():
-            if target[1] == building.tile_position \
-                    and target[0] == building.unit_type:
-                # print("builder done:", builder)
-                self.remove_builder(builder)
-                self.assign_worker_job(builder)
-                break
-        # print("miss!")
-
-    # ZW
-    def have_worker_construct(self, building: UnitType,
-                              position: Union[Point2DI, Unit]) -> None:
-        """Order workplace to try to construct building at given position."""
-        worker = self.get_suitable_builder()
-
-        if worker:
-            if isinstance(position, Point2DI):
-                build = lambda: worker.build(building, position)
-                target = (building, position)
-            elif isinstance(position, Unit):
-                build = lambda: worker.build_target(building, position)
-                target = (building, position.tile_position)
-            else:
-                print("'I can't build here!'-The building can't be constructed")
-                target = None
-                build = None
-
-            if target:
-                self.free_worker(worker)
-                self.add_builder(worker)
-                build()
-                self.builders_targets[worker] = target
-
-    def is_building_unittype(self, ut: UnitType) -> bool:
-        """Check if workplace is trying to construct unittype already."""
-        for target in self.builders_targets.values():
-            if target[0] == ut:
-                return True
-        return False
-
     def add_barracks(self, barrack: Unit) -> None:
         """Adds a barrack to the workplace."""
         self.barracks.append(barrack)
@@ -481,57 +549,8 @@ class Workplace:
         """Adds a factory to the workplace."""
         self.factories.append(factory)
 
-    def builders_targets_of_type(self, ut: UnitType) -> Dict[Unit, tuple]:
-        """Return all builder targets of given unitType"""
-        found = {}
-        for builder, builder_target in self.builders_targets.items():
-            if ut == builder_target[0]:
-                found[builder] = builder_target
-        return found
-
-    @property
-    def miners_capacity(self) -> int:
-        """How many miners the workplace requires."""
-        return 2 * len(self.mineral_fields)
-
-    @property
-    def gasers_capacity(self) -> int:
-        """How many gasers the workplace requires."""
-        return 3 * len(self.refineries)
-
-    @property
-    def scv_capacity(self) -> int:
-        """How many scvs the workplace requires."""
-        return self.miners_capacity + self.gasers_capacity
-
-    @property
-    def wants_miners(self) -> int:
-        """How many miners the workplace is missing."""
-        if not self.under_attack:
-            return max(self.miners_capacity - len(self.miners)
-                       - len(self.builders), 0)
-        else:
-            return 0
-
-    @property
-    def wants_gasers(self) -> int:
-        """How many gasers the workplace is missing."""
-        if not self.under_attack:
-            return max(self.gasers_capacity - len(self.gasers), 0)
-        else:
-            return 0
-
-    @property
-    def wants_scvs(self) -> int:
-        """How many scvs the workplace is missing."""
-        return self.wants_miners + self.wants_gasers
-
-    @property
-    def has_enough_scvs(self) -> bool:
-        """If the workplace needs any more scvs."""
-        return self.wants_scvs <= 0
-
-    # Max number of buildings per workplace (base location)
+    # ---------- PROPERTIES ----------
+    # Values that are trivial calculations but important for the object
 
     @property
     def max_number_of_barracks(self) -> int:
@@ -543,11 +562,24 @@ class Workplace:
         """return the max number of factories"""
         return min((1 * len(workplaces)), 2)
 
+    # ---------- MISC ----------
+    # Other needed functions.
+
+    # DP
+    def get_scout(self) -> Union[Unit, None]:
+        """Returns a suitable scout (worker)"""
+        worker = self.get_suitable_worker_and_remove()
+        if worker:
+            add_scout(worker)
+        return worker
+
     def str_unit(self, worker: Unit) -> str:
         """Create a string for a worker to be more informative."""
         return (str(worker) + ":" + str(worker.id) + "  on "
                 + str(workplaces.index(self)))
 
+
+# ========== END OF WORKPLACE ==========
 
 # All scouts
 scouts = []

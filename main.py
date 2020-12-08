@@ -26,8 +26,6 @@ class MyAgent(ScaiBackbone):
         create_workplace(self.base_location_manager
                          .get_player_starting_base_location(PLAYER_SELF), self)
 
-        Troop.enemy_bases.append(self.base_location_manager.get_player_starting_base_location(PLAYER_ENEMY))
-
     def on_step(self) -> None:
         """Called each cycle, passed from IDABot.on_step()."""
         ScaiBackbone.on_step(self)
@@ -346,7 +344,6 @@ class MyAgent(ScaiBackbone):
                     scout.move(closest_base)
 
     def expansion(self):  # AW
-        """Builds new command center when needed"""
         command_center = UNIT_TYPEID.TERRAN_COMMANDCENTER
         command_center_type = UnitType(UNIT_TYPEID.TERRAN_COMMANDCENTER, self)
         location = self.base_location_manager.get_next_expansion(PLAYER_SELF).\
