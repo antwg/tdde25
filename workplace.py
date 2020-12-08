@@ -94,7 +94,7 @@ class Workplace:
         self.factories = []
         self.factories_with_techlab = []
 
-        for unit in bot.get_all_units():
+        for unit in bot.remember_these:
             if unit.minerals_left_in_mineralfield > 0 \
                     and unit.unit_type.is_mineral \
                     and location.contains_position(unit.position) \
