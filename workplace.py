@@ -325,10 +325,10 @@ class Workplace:
         home_base_2di = Point2DI(int(home_base.x), int(home_base.y))
         if unit_type == UnitType(UNIT_TYPEID.TERRAN_FACTORY, bot):
             return bot.building_placer.get_build_location_near(home_base_2di,
-                                                               unit_type, 40)
+                                                               unit_type, 38)
         elif unit_type == UnitType(UNIT_TYPEID.TERRAN_BARRACKS, bot):
             return bot.building_placer.get_build_location_near(home_base_2di,
-                                                               unit_type, 35)
+                                                               unit_type, 30)
         elif unit_type == UnitType(UNIT_TYPEID.TERRAN_SUPPLYDEPOT, bot):
             return bot.building_placer.get_build_location_near(home_base_2di,
                                                                unit_type, 20)

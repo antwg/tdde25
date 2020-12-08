@@ -88,6 +88,7 @@ class ScaiBackbone(IDABot):
         self.should_train_tanks = []
         self.scout_path = []
         self.scout_index = 0
+        self.seen_enemy_base = False
 
     def on_game_start(self):
         IDABot.on_game_start(self)

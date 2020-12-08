@@ -48,6 +48,11 @@ class MyAgent(ScaiBackbone):
         if self.should_train_tanks:
             self.train_tank()
 
+        if not self.seen_enemy_base:
+            self.scout()
+
+
+
         # if not scouts:
         #     potential = random.choice(workplaces).get_suitable_worker_and_remove()
         #     if potential:
@@ -99,9 +104,9 @@ class MyAgent(ScaiBackbone):
         if unit in scouts:
             self.scout()
 
-        #     if unit.position.dist(self.scout_path[self.scout_index]) < 3:
-        #         self.scout_index = (self.scout_index + 1) % len(self.scout_path)
-            # unit.move(self.scout_path[self.scout_index])
+           # if unit.position.dist(self.scout_path[self.scout_index]) < 3:
+           #     self.scout_index = (self.scout_index + 1) % len(self.scout_path)
+            #    unit.move(self.scout_path[self.scout_index])
 
     def on_new_my_unit(self, unit: Unit):
         """Called each time a new unit is noticed."""
@@ -268,26 +273,36 @@ class MyAgent(ScaiBackbone):
 
     # DP
     def scout(self):
-        """Finds suitable scout (miner) that checks all base locations based on chords."""
+        """Finds suitable scout (miner) that checks all base locations."""
         if len(defenders) >= 1:
             if not all_base_chords:
                 # Gets all base chords
                 for cords in choke_point_dict:
-                    all_base_chords.append(cords)
+                    if cords not in [(26, 137), (125, 30)]:
+                        all_base_chords.append(cords)
 
             if not scouts:
                 # Finds and adds scout to scouts
                 scout = workplaces[-1].get_scout()
+
                 if scout:
                     scout.move(self.closest_base(scout.position, all_base_chords))
 
-            if len(all_base_chords) > 0:
+            if scouts and len(all_base_chords) > 0:
                 scout = scouts[0]
                 closest_base = self.closest_base(scout.position, all_base_chords)
                 # Move to closest base chord. If there or idle, go to next site.
-                if scout.is_idle or scout.position.dist(Point2D(closest_base.x, closest_base.y)) <= 1.5:
+                if scout.is_idle or scout.position.dist(Point2D(closest_base.x, closest_base.y)) <= 1.5\
+                        and self.seen_enemy_base:
                     all_base_chords.remove((closest_base.x, closest_base.y))
                     scout.move(closest_base)
+                if not self.seen_enemy_base:
+                    if self.side() == "right":
+                        scout.move(Point2D(26, 137))
+                        self.seen_enemy_base = True
+                    else:
+                        scout.move(Point2D(125, 30))
+                        self.seen_enemy_base = True
 
     def closest_base(self, pos: Point2D, locations):
         """Checks the closest base_location to a position"""
