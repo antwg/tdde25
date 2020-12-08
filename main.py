@@ -49,6 +49,9 @@ class MyAgent(ScaiBackbone):
             self.train_tank()
         self.scout()
 
+        if not self.seen_enemy_base:
+            self.scout()
+
     # ---------- LOCAL EVENTS ----------
     # These are events handling personal units only
 
@@ -243,6 +246,35 @@ class MyAgent(ScaiBackbone):
                 self.on_lost_unit(remembered_unit)
                 self.remember_these.remove(remembered_unit)
 
+    def handle_found_unit(self, unit: Unit, remember: List[Unit]):
+        if unit not in remember:
+            self.not_remember_unit(unit, remember)
+        else:
+            self.do_remember_unit(unit, remember)
+
+    def not_remember_unit(self, unit: Unit, remember: List[Unit]):
+        # A new unit is discovered
+        if unit.is_alive and unit.is_cloaked:
+            self.remember_these.append(unit)
+            self.on_discover_unit(unit)
+
+    def do_remember_unit(self, unit: Unit, remember: List[Unit]):
+        # A new unit is discovered
+        if unit.is_alive:
+            remember.remove(unit)
+
+    def closest_base(self, pos: Point2D, locations):
+        """Checks the closest base_location to a position"""
+        closest = None
+        distance = 0
+        for base_chords in locations:
+            base = Point2D(base_chords[0], base_chords[1])
+            # Point2D.dist(...) is a function in scai_backbone
+            if not closest or distance > base.dist(pos):
+                closest = base
+                distance = base.dist(pos)
+
+        return closest
     # ---------- TRAIN ----------
     # Functions that tries to train a unit.
 
@@ -319,19 +351,21 @@ class MyAgent(ScaiBackbone):
 
     # ---------- ORGANS ----------
     # Major impact functions that are important for the bot.
-
+   
     # DP
     def scout(self):
-        """Finds suitable scout (miner) that checks all base locations based on chords."""
+        """Finds suitable scout (miner) that checks all base locations."""
         if len(defenders) >= 1:
             if not all_base_chords:
                 # Gets all base chords
                 for cords in choke_point_dict:
-                    all_base_chords.append(cords)
+                    if cords not in [(26, 137), (125, 30)]:
+                        all_base_chords.append(cords)
 
             if not scouts:
                 # Finds and adds scout to scouts
                 scout = workplaces[-1].get_scout()
+
                 if scout:
                     scout.move(self.closest_base(scout.position, all_base_chords))
 
@@ -339,9 +373,17 @@ class MyAgent(ScaiBackbone):
                 scout = scouts[0]
                 closest_base = self.closest_base(scout.position, all_base_chords)
                 # Move to closest base chord. If there or idle, go to next site.
-                if scout.is_idle or scout.position.dist(Point2D(closest_base.x, closest_base.y)) <= 1.5:
+                if scout.is_idle or scout.position.dist(Point2D(closest_base.x, closest_base.y)) <= 1.5\
+                        and self.seen_enemy_base:
                     all_base_chords.remove((closest_base.x, closest_base.y))
                     scout.move(closest_base)
+                if not self.seen_enemy_base:
+                    if self.side() == "right":
+                        scout.move(Point2D(26, 137))
+                        self.seen_enemy_base = True
+                    else:
+                        scout.move(Point2D(125, 30))
+                        self.seen_enemy_base = True
 
     def expansion(self):  # AW
         command_center = UNIT_TYPEID.TERRAN_COMMANDCENTER
