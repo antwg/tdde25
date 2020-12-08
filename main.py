@@ -364,7 +364,6 @@ class MyAgent(ScaiBackbone):
                 new_workplace = create_workplace \
                     (self.base_location_manager.get_next_expansion(PLAYER_SELF),
                      self)
-
                 new_workplace.add(worker)
                 new_workplace.have_worker_construct(command_center_type,
                                                     location)
