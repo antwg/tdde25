@@ -215,6 +215,7 @@ class Troop:
         """Sets target of troop."""
         self.__target = target
         self.not_reached_target = self.get_units()
+        self.already_idle = []
 
         for bunker in self.bunkers:
             if not self.nearby_target(bunker):

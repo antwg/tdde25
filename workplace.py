@@ -573,6 +573,12 @@ class Workplace:
             add_scout(worker)
         return worker
 
+    def flush_units(self) -> List[Unit]:
+        """Remove all but a few workers."""
+
+        while len(self.workers) > 3:
+            break
+
     def str_unit(self, worker: Unit) -> str:
         """Create a string for a worker to be more informative."""
         return (str(worker) + ":" + str(worker.id) + "  on "
