@@ -576,10 +576,15 @@ class Workplace:
     def flush_units(self) -> List[Unit]:
         """Remove all but a few workers."""
 
-        while len(self.workers) > 3:
-            break
+        i = 0
+        while i < len(self.workers) > 3:
+            worker = self.workers[1]
+            if worker not in self.builders:
+                self.remove(worker)
+            else:
+                i += 1
 
-    def str_unit(self, worker: Unit) -> str:
+    def str_worker(self, worker: Unit) -> str:
         """Create a string for a worker to be more informative."""
         return (str(worker) + ":" + str(worker.id) + "  on "
                 + str(workplaces.index(self)))

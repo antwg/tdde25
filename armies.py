@@ -27,6 +27,7 @@ class Troop:
     marines_capacity_atk: int = 12  # How many marines an attacking troop is asking for
     tanks_capacity_atk: int = 4  # How many tanks a attacking troop is asking for
     target_radius: int = 7  # How close a unit must be to a target to be there
+    leash_radius: int = 7  # How close a unit must be to leader when march as one
 
     # Unitlist for those in special states
     reached_target: List[Unit]  # All units that have reached target
@@ -38,6 +39,11 @@ class Troop:
     under_attack: bool  # If troop is under attack or not
     is_attackers: bool  # If troop is attacking or not
     prohibit_refill: bool  # - If troop will request more troops or not
+
+    # Follow leader
+    __leash: Union[Callable, None]  # A function that moves unit towards leader position
+    leader: Unit  # When marching as one, follow this unit
+    slowest: Unit  # When marching as one, let this keep up with leader
 
     # (Attacking) Troop targets
     enemy_bases: List[BaseLocation] = []  # All potential enemy bases for attackers to attack
@@ -51,7 +57,6 @@ class Troop:
         """Called when a new troop is being created. Note that no units are
         required for making a troop, rather it is why they need to be created.
         """
-        self.__target = None
         self.__order = self.__march_order
         self.marines = []
         self.tanks = []
@@ -64,6 +69,7 @@ class Troop:
         self.is_attackers = is_attackers
         self.prohibit_refill = False
         self.enemy_bases = []
+        self.follow_leader = False
 
         if is_attackers:
             self.marines_capacity = self.marines_capacity_atk
@@ -81,6 +87,16 @@ class Troop:
         elif not self.is_attackers:
             if not self.bunkers.keys():
                 self.build_bunker(bot, self.target_pos)
+
+        if self.__leash:
+            for unit in self.get_units():
+                if unit == self.leader:
+                    if self.leader.dist(self.slowest) > self.leash_radius:
+                        unit.stop()
+                    else:
+                        self.__order(unit)
+                elif not self.nearby_leader(unit):
+                    self.__leash(unit)
 
     def on_idle(self, unit: Unit, bot: IDABot):
         """Called each time a member is idle."""
@@ -123,33 +139,47 @@ class Troop:
         """Have a member attack given position."""
         unit.attack_move(self.__target)
 
-    def march_units(self, position: Point2D) -> None:
-        """Have troop and all its units attack given position."""
-        self.__order = self.__march_order
-        self.set_target(position)
-        self.all_execute_orders()
-
     def __move_order(self, unit: Unit) -> None:
         """Moves a unit to given position."""
         unit.move(self.__target)
-
-    def move_units(self, position: Point2D) -> None:
-        """Moves troop and all its units to given position."""
-        self.__order = self.__move_order
-        self.set_target(position)
-        self.all_execute_orders()
 
     def __attack_order(self, unit: Unit) -> None:
         """Have a unit attack target."""
         unit.attack_unit(self.__target)
 
+    def __follow_leader(self, unit: Unit) -> None:
+        """Have unit follow leader."""
+        unit.right_click(self.leader)
+
+    def march_units(self, position: Point2D) -> None:
+        """Have troop and all its units attack given position."""
+        self.__leash = None
+        self.__order = self.__march_order
+        self.set_target(position)
+        self.all_execute_orders()
+
+    def march_together_units(self, position: Point2D) -> None:
+        """Have troop and all its units attack given position but stay close to leader."""
+        self.__leash = self.__march_order
+        self.__order = self.__march_order
+        self.set_target(position)
+        self.all_execute_orders()
+
+    def move_units(self, position: Point2D) -> None:
+        """Moves troop and all its units to given position."""
+        self.__leash = None
+        self.__order = self.__move_order
+        self.set_target(position)
+        self.all_execute_orders()
+
     def attack_units(self, target: Unit) -> None:
         """Have all units attack given unit."""
+        self.__leash = self.__follow_leader
         self.__order = self.__attack_order
         self.set_target(target)
         self.all_execute_orders()
 
-    def all_execute_orders(self):
+    def all_execute_orders(self) -> None:
         """Have all members execute order."""
         for trooper in self.get_units():
             self.__order(trooper)
@@ -184,6 +214,9 @@ class Troop:
             if self.satisfied and self.is_attackers:
                 self.prohibit_refill = True
 
+            self.try_assigning_leader(unit)
+            self.try_assigning_slowest(unit)
+
     def remove(self, unit: Unit) -> None:
         """Handles units that are to be removed from troop."""
         if unit in self.marines:
@@ -196,6 +229,16 @@ class Troop:
             del self.bunkers[unit]
         elif unit in self.others:
             self.others.remove(unit)
+
+        if unit == self.slowest:
+            self.leader = None
+            for unit in self.get_units():
+                self.try_assigning_leader(unit)
+
+        if unit == self.leader:
+            self.leader = None
+            for unit in self.get_units():
+                self.try_assigning_slowest(unit)
 
     def get_units(self) -> List[Unit]:
         """Get all units in troop."""
@@ -258,6 +301,32 @@ class Troop:
         else:
             raise Exception("Can't do that!")
 
+    # ZW
+    def nearby_leader(self, at: Union[Unit, Point2D]) -> bool:
+        """Check if a unit is nearby leader."""
+        if isinstance(at, Unit):
+            return at.position.dist(self.leader.position) <= self.leash_radius
+        elif isinstance(at, Point2D):
+            return at.dist(self.leader.position) <= self.leash_radius
+        else:
+            raise Exception("Can't do that!")
+
+    def try_assigning_leader(self, unit: Unit) -> None:
+        """Try to set new leader to given unit for troop."""
+        if not self.leader:
+            self.leader = unit
+        elif self.leader.is_flying == unit.is_flying:
+            if unit.radius > self.leader.radius:
+                self.leader = unit
+        elif not unit.is_flying:
+            self.leader = unit
+
+    def try_assigning_slowest(self, unit: Unit) -> None:
+        """Try to set new slowest to given unit for troop."""
+        if not self.slowest or (self.slowest.unit_type.movement_speed
+                                > unit.unit_type.movementspeed):
+            self.slowest = unit
+
     # AW
     def have_soldiers_enter(self, bunker: Unit) -> None:
         """Have marines enter bunker."""
@@ -297,13 +366,13 @@ class Troop:
     def wants_marines(self) -> int:
         """Return required amount of marines to satisfy capacity."""
         return max(self.marines_capacity - len(self.marines), 0) \
-            if not self.under_attack else 0
+            if not self.under_attack and not self.prohibit_refill else 0
 
     @property
     def wants_tanks(self) -> int:
         """Return required amount of tanks to satisfy capacity."""
         return max(self.tanks_capacity - len(self.tanks), 0) \
-            if not self.under_attack else 0
+            if not self.under_attack and not self.prohibit_refill else 0
 
     @property
     def has_enough(self) -> bool:
@@ -390,6 +459,9 @@ def marine_seeks_troop(position: Point2D) -> Union[Troop, None]:
     distance = [0, 0, 0]
 
     for troop in all_troops():
+        if troop.prohibit_refill:
+            continue
+
         if troop.wants_marines > 0 and not troop.is_attackers:
             if not closest[0] or troop.target_pos.dist(position) / troop.wants_marines < distance[0]:
                 closest[0] = troop
@@ -413,6 +485,9 @@ def tank_seeks_troop(position: Point2D) -> Union[Troop, None]:
     distance = [0, 0, 0]
 
     for troop in all_troops():
+        if troop.prohibit_refill:
+            continue
+
         if troop.wants_tanks > 0 and not troop.is_attackers:
             if not closest[0] or troop.target_pos.dist(position) / troop.wants_tanks < distance[0]:
                 closest[0] = troop
