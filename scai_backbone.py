@@ -7,6 +7,8 @@ from library import *
 
 import personal
 
+# ___LISTS_OF_UNIT_TYPEIDS___
+
 grounded_command_centers_TYPEIDS = [
     UNIT_TYPEID.TERRAN_COMMANDCENTER,
     UNIT_TYPEID.TERRAN_ORBITALCOMMAND,
@@ -42,10 +44,12 @@ refineries_TYPEIDS = [
     UNIT_TYPEID.AUTOMATEDREFINERY,
     UNIT_TYPEID.INFESTEDREFINERY]
 
-
 siege_tanks_TYPEIDS = [
     UNIT_TYPEID.TERRAN_SIEGETANK,
     UNIT_TYPEID.TERRAN_SIEGETANKSIEGED]
+
+
+# ___COORDINATES___
 
 choke_point_dict = {(59, 28): (52, 35), (125, 137): (127, 128),
                     (58, 128): (67, 116), (125, 30): (114, 46),
@@ -60,6 +64,8 @@ choke_point_dict = {(59, 28): (52, 35), (125, 137): (127, 128),
 all_base_chords = []
 
 
+# ___METHODS___
+
 # Get the distance to a point from a point
 Point2D.dist = lambda self, other: sqrt((self.x - other.x)**2
                                         + (self.y - other.y)**2)
@@ -73,15 +79,13 @@ Point2DI.to_f = lambda self: Point2D(self.x, self.y)
 
 
 class ScaiBackbone(IDABot):
+    """Handles bootstrap of program and important startup functions."""
 
     id: int  # The value of owner in it's units that corresponds to this player
 
-    # scout_path: List[Point2D]  # Path for scout
-    # scout_index: int  # Where in scout_path the scout has visited
-
     def __init__(self):
         IDABot.__init__(self)
-        self.id = None
+        self.id = 0
         self.remember_these = []
         self.remember_mine = []
         self.should_train_marines = []
@@ -90,10 +94,10 @@ class ScaiBackbone(IDABot):
         self.scout_index = 0
         self.seen_enemy_base = False
 
-    def on_game_start(self):
+    def on_game_start(self) -> None:
         IDABot.on_game_start(self)
 
-    def on_step(self):
+    def on_step(self) -> None:
         IDABot.on_step(self)
         if not self.id:
             for unit in self.get_my_units():
@@ -101,11 +105,14 @@ class ScaiBackbone(IDABot):
                 # print("ID:", self.id)
                 break
 
-    def expansion(self):
+    def expansion(self) -> None:
+        """Builds new command center when needed."""
         pass
 
     @classmethod
-    def bootstrap(cls):
+    def bootstrap(cls) -> None:
+        """Starts and runs a Starcraft 2 math with defined settings."""
+
         coordinator = Coordinator(personal.game_dir)
 
         bot1 = cls()

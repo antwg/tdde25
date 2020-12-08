@@ -30,23 +30,22 @@ class Troop:
 
     # Unitlist for those in special states
     reached_target: List[Unit]  # All units that have reached target
+    already_idle: List[Unit]  # All units that have been noticed as idle
     tanks_siege: List[Unit]  # All siege tanks in siegemode in this troop
 
     # Statehandlers
     __order: Callable  # A function that moves unit as demanded
     under_attack: bool  # If troop is under attack or not
     is_attackers: bool  # If troop is attacking or not
-    committed_attackers: bool  # - If troop will request more troops or not
+    prohibit_refill: bool  # - If troop will request more troops or not
 
     # (Attacking) Troop targets
     enemy_bases: List[BaseLocation] = []  # All potential enemy bases for attackers to attack
     enemy_structures: List[BaseLocation] = []  # All known enemy structures that needs to be destroyed to win
 
-    enemy_bases: List = []
-
     # ---------- EVENTS ----------
     # These are functions triggered by different events. Most are
-    # triggered by MyAgent
+    # triggered from MyAgent.
 
     def __init__(self, position: Point2D, is_attackers: bool = False):
         """Called when a new troop is being created. Note that no units are
@@ -60,9 +59,10 @@ class Troop:
         self.bunkers = {}
         self.others = []
         self.not_reached_target = []
+        self.already_idle = []
         self.under_attack = False
         self.is_attackers = is_attackers
-        self.committed_attackers = False
+        self.prohibit_refill = False
         self.enemy_bases = []
 
         if is_attackers:
@@ -73,6 +73,9 @@ class Troop:
 
     def on_step(self, bot: IDABot):
         """Called each on_step() of IDABot."""
+        self.already_idle = list(filter(
+            lambda unit: unit.is_idle, self.already_idle))
+
         if self.under_attack:
             pass
         elif not self.is_attackers:
@@ -81,11 +84,18 @@ class Troop:
 
     def on_idle(self, unit: Unit, bot: IDABot):
         """Called each time a member is idle."""
-        if unit in self.not_reached_target:
-            if self.nearby_target(unit):
+        if unit not in self.already_idle:
+            self.already_idle.append(unit)
+            self.on_just_idle(unit, bot)
+
+    def on_just_idle(self, unit: Unit, bot: IDABot):
+        """Called each time a member just became idle."""
+        if self.nearby_target(unit):
+            if unit in self.not_reached_target:
                 self.not_reached_target.remove(unit)
                 self.on_member_reach_target(unit)
-            elif unit in self.tanks_siege:
+        else:
+            if unit in self.tanks_siege:
                 unit.ability(ABILITY_ID.MORPH_UNSIEGE)
                 self.tanks_siege.remove(unit)
             else:
@@ -93,10 +103,10 @@ class Troop:
 
     def on_member_reach_target(self, unit: Unit):
         """A member reaches target for first time."""
-        if not self.not_reached_target and self.committed_attackers:
+        if not self.not_reached_target and self.prohibit_refill:
             self.try_to_win()
 
-        if unit in self.tanks and unit not in self.tanks_siege:
+        elif unit in self.tanks and unit not in self.tanks_siege:
             # TODO: HAVE SIEGE TANKS MORPH PROPERLY
             unit.ability(ABILITY_ID.MORPH_SIEGEMODE)
             self.tanks_siege.append(unit)
@@ -172,7 +182,7 @@ class Troop:
             self.not_reached_target.append(unit)
 
             if self.satisfied and self.is_attackers:
-                self.committed_attackers = True
+                self.prohibit_refill = True
 
     def remove(self, unit: Unit) -> None:
         """Handles units that are to be removed from troop."""
@@ -205,13 +215,24 @@ class Troop:
         """Sets target of troop."""
         self.__target = target
         self.not_reached_target = self.get_units()
+        self.already_idle = []
 
         for bunker in self.bunkers:
             if not self.nearby_target(bunker):
                 self.remove(bunker)
 
+    def flush_troop(self) -> List[Unit]:
+        """Remove and return all units in troop."""
+        self.prohibit_refill = True
+
+        units = self.get_units()
+        free = []
+        while units:
+            free.append(units.pop())
+        return free
+
     # ---------- MISC ----------
-    # Other needed functions
+    # Other needed functions.
 
     def build_bunker(self, bot: IDABot, location) -> None:  # AW
         """Builds a bunker when necessary."""
@@ -259,8 +280,13 @@ class Troop:
     @property
     def satisfied(self):
         """Return True if the troop wants more units."""
-        return (self.committed_attackers or
+        return (self.prohibit_refill or
                 self.wants_marines <= 0 and self.wants_tanks <= 0)
+
+    @property
+    def is_terminated(self):
+        """Return True if the troop is empty and can't refill."""
+        return self.prohibit_refill and not self.get_units()
 
     @property
     def have_all_reached_target(self):
@@ -297,7 +323,7 @@ class Troop:
     @classmethod
     def found_enemy_structure(cls, unit: Unit, bot: IDABot):
         """Adds target structure to Troop targets."""
-        if not unit.is_cloaked:
+        if unit.is_cloaked:
             cls.enemy_structures.append(unit)
             for base in bot.base_location_manager.base_locations:
                 if base.contains_position(unit.position) \
@@ -318,8 +344,8 @@ class Troop:
 
 
 # All troops!
-defenders = []
-attackers = []
+defenders: List[Troop] = []
+attackers: List[Troop] = []
 
 
 # ZW
@@ -332,6 +358,23 @@ def create_troop_defending(point: Point2D):
 def create_troop_attacking(point: Point2D):
     """Creates a new troop with given target that are suppose to attack."""
     attackers.append(Troop(point, True))
+
+
+# ZW
+def remove_terminated_troops() -> None:
+    """Remove empty troops from relevant lists."""
+    i = 0
+    while i < len(attackers):
+        if attackers[i].is_terminated:
+            attackers.pop(i)
+        else:
+            i += 1
+    i = 0
+    while i < len(defenders):
+        if defenders[i].is_terminated:
+            defenders.pop(i)
+        else:
+            i += 1
 
 
 # ZW
