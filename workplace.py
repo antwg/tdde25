@@ -354,6 +354,15 @@ class Workplace:
                 location = self.building_location_finder(bot, barrack)
                 self.have_worker_construct(barrack, location)
 
+        else:
+            if can_afford(bot, barrack) \
+                    and len(self.barracks) < self.small_number_of_barracks \
+                    and not self.is_building_unittype(barrack)\
+                    and len(self.miners) > 5:
+
+                location = self.building_location_finder(bot, barrack)
+                self.have_worker_construct(barrack, location)
+
     # ZW
     def build_refinery(self, bot: IDABot) -> None:
         """Builds a refinery at base location if possible."""
@@ -557,7 +566,7 @@ class Workplace:
     @property
     def max_number_of_barracks(self) -> int:
         """return the max number of barracks"""
-        return min((2 * len(workplaces)), 6)
+        return min(1 * len(workplaces), 6)
 
     @property
     def max_number_of_factories(self) -> int:
@@ -567,7 +576,7 @@ class Workplace:
     @property
     def small_number_of_barracks(self) -> int:
         """return number of barracks for base expansions"""
-        return min((2 * len(workplaces)), 6)
+        return 1
 
     # ---------- MISC ----------
     # Other needed functions.
