@@ -390,6 +390,7 @@ class Workplace:
     def build_factory(self, bot: IDABot) -> None:
         """Builds a factory when necessary."""
         factory = UnitType(UNIT_TYPEID.TERRAN_FACTORY, bot)
+        factory_techlab = UnitType(UNIT_TYPEID.TERRAN_FACTORYTECHLAB, bot)
 
         if workplaces[0] == self:
             if can_afford(bot, factory) \
@@ -397,7 +398,7 @@ class Workplace:
                     and not currently_building(bot, UNIT_TYPEID.TERRAN_FACTORY) \
                     and not self.is_building_unittype(factory)\
                     and len(self.miners) > 5:
-                location = self.building_location_finder(bot, factory)
+                location = self.building_location_finder(bot, factory_techlab)
                 self.have_worker_construct(factory, location)
 
     # DP
@@ -411,7 +412,8 @@ class Workplace:
         """Finds a suitable location to build a unit of given type"""
         home_base = self.location.position
         home_base_2di = Point2DI(int(home_base.x), int(home_base.y))
-        if unit_type == UnitType(UNIT_TYPEID.TERRAN_FACTORY, bot):
+        if unit_type == UnitType(UNIT_TYPEID.TERRAN_FACTORY, bot) or \
+            unit_type == UnitType(UNIT_TYPEID.TERRAN_FACTORYTECHLAB, bot):
             return bot.building_placer.get_build_location_near(home_base_2di,
                                                                unit_type, 38)
         elif unit_type == UnitType(UNIT_TYPEID.TERRAN_BARRACKS, bot):
@@ -561,6 +563,11 @@ class Workplace:
     def max_number_of_factories(self) -> int:
         """return the max number of factories"""
         return min((1 * len(workplaces)), 2)
+
+    @property
+    def small_number_of_barracks(self) -> int:
+        """return number of barracks for base expansions"""
+        return min((2 * len(workplaces)), 6)
 
     # ---------- MISC ----------
     # Other needed functions.

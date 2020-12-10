@@ -70,6 +70,9 @@ class Troop:
         self.prohibit_refill = False
         self.enemy_bases = []
         self.follow_leader = False
+        self.__leash = None
+        self.leader = None
+        self.slowest = None
 
         if is_attackers:
             self.marines_capacity = self.marines_capacity_atk
@@ -91,7 +94,7 @@ class Troop:
         if self.__leash:
             for unit in self.get_units():
                 if unit == self.leader:
-                    if self.leader.dist(self.slowest) > self.leash_radius:
+                    if self.leader.position.dist(self.slowest.position) > self.leash_radius:
                         unit.stop()
                     else:
                         self.__order(unit)
@@ -324,7 +327,7 @@ class Troop:
     def try_assigning_slowest(self, unit: Unit) -> None:
         """Try to set new slowest to given unit for troop."""
         if not self.slowest or (self.slowest.unit_type.movement_speed
-                                > unit.unit_type.movementspeed):
+                                > unit.unit_type.movement_speed):
             self.slowest = unit
 
     # AW
@@ -339,7 +342,7 @@ class Troop:
         """Attackers will try to kill all enemy units."""
         if self.enemy_structures:
             # Attack closest structure
-            self.march_units(get_closest(
+            self.march_together_units(get_closest(
                 [(unit.position, unit.position) for unit in self.enemy_structures],
                 self.target_pos))
 
