@@ -53,8 +53,11 @@ class Workplace:
             self.build_barrack(bot)
             self.build_factory(bot)
             self.build_refinery(bot)
+            self.build_engineering_bay(bot)
         else:
             self.build_command_center(bot)
+            self.upgrade_marines(bot)
+
 
     def on_idle_my_unit(self, unit: Unit, bot: IDABot) -> None:
         """Called each time for a worker that is idle in this workplace."""
@@ -363,6 +366,36 @@ class Workplace:
                 location = self.building_location_finder(bot, barrack)
                 self.have_worker_construct(barrack, location)
 
+    def build_engineering_bay(self, bot: IDABot) -> None:
+        """Builds an engineering bay."""
+        engineering_bay = UnitType(UNIT_TYPEID.TERRAN_ENGINEERINGBAY, bot)
+
+        if can_afford(bot, engineering_bay) \
+                and len(workplaces) >= 2\
+                and not bot.have_one(engineering_bay)\
+                and not currently_building(bot, UNIT_TYPEID.TERRAN_ENGINEERINGBAY)\
+                and not self.is_building_unittype(engineering_bay):
+            if bot.side() == 'right':
+                location = bot.building_placer.get_build_location_near(
+                    Point2DI(110, 23), engineering_bay)
+            else:
+                location = bot.building_placer.get_build_location_near(
+                    Point2DI(41, 148), engineering_bay)
+
+            self.have_worker_construct(engineering_bay, location)
+
+    def upgrade_marines(self, bot: IDABot):
+        """Upgrades marines if player has an abundance of resources"""
+        engineering_bays = get_my_type_units(bot, UNIT_TYPEID.TERRAN_ENGINEERINGBAY)
+
+        if bot.minerals >= 600 and bot.gas >= 600 and engineering_bays:
+
+            engineering_bay = engineering_bays[0]
+
+            engineering_bay.research(UPGRADE_ID.TERRANINFANTRYWEAPONSLEVEL1)
+            engineering_bay.research(UPGRADE_ID.TERRANINFANTRYARMORSLEVEL1)
+
+
     # ZW
     def build_refinery(self, bot: IDABot) -> None:
         """Builds a refinery at base location if possible."""
@@ -424,7 +457,7 @@ class Workplace:
         if unit_type == UnitType(UNIT_TYPEID.TERRAN_FACTORY, bot) or \
             unit_type == UnitType(UNIT_TYPEID.TERRAN_FACTORYTECHLAB, bot):
             return bot.building_placer.get_build_location_near(home_base_2di,
-                                                               unit_type, 38)
+                                                               unit_type, 35)
         elif unit_type == UnitType(UNIT_TYPEID.TERRAN_BARRACKS, bot):
             return bot.building_placer.get_build_location_near(home_base_2di,
                                                                unit_type, 30)
@@ -570,7 +603,7 @@ class Workplace:
 
     @property
     def max_number_of_factories(self) -> int:
-        """return the max number of factories"""
+        """Return the max number of factories"""
         return min((1 * len(workplaces)), 2)
 
     @property

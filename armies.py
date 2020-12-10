@@ -163,7 +163,7 @@ class Troop:
 
     def march_together_units(self, position: Point2D) -> None:
         """Have troop and all its units attack given position but stay close to leader."""
-        self.__leash = self.__march_order
+        self.__leash = self.__follow_leader
         self.__order = self.__march_order
         self.set_target(position)
         self.all_execute_orders()
@@ -234,14 +234,14 @@ class Troop:
             self.others.remove(unit)
 
         if unit == self.slowest:
-            self.leader = None
+            self.slowest = None
             for unit in self.get_units():
-                self.try_assigning_leader(unit)
+                self.try_assigning_slowest(unit)
 
         if unit == self.leader:
             self.leader = None
             for unit in self.get_units():
-                self.try_assigning_slowest(unit)
+                self.try_assigning_leader(unit)
 
     def get_units(self) -> List[Unit]:
         """Get all units in troop."""
@@ -408,7 +408,7 @@ class Troop:
         cls.enemy_structures.remove(unit)
 
         for base in cls.enemy_bases.copy():
-            if base.contains_position(unit) and \
+            if base.contains_position(unit.position) and \
                     not base.is_occupied_by_player(PLAYER_ENEMY):
                 cls.enemy_bases.remove(base)
 

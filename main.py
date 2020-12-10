@@ -22,7 +22,7 @@ class MyAgent(ScaiBackbone):
         if self.side() == 'right':
             create_troop_defending(Point2D(114, 46))
         else:
-            create_troop_defending(Point2D(37, 121))
+            create_troop_defending(Point2D(38, 122))
         create_workplace(self.base_location_manager
                          .get_player_starting_base_location(PLAYER_SELF), self)
 
@@ -43,10 +43,10 @@ class MyAgent(ScaiBackbone):
         remove_terminated_troops()
 
         self.train_scv()
-        if self.should_train_marines:
-            self.train_marine()
         if self.should_train_tanks:
             self.train_tank()
+        if self.should_train_marines:
+            self.train_marine()
         self.scout()
 
         if not self.seen_enemy_base:
@@ -67,7 +67,7 @@ class MyAgent(ScaiBackbone):
                     workplace.on_building_completed(unit)
                     break
 
-        # lowers a supplydepot when done building
+        # lowers a supply depot when done building
         if unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_SUPPLYDEPOT:
             unit.ability(ABILITY_ID.MORPH_SUPPLYDEPOT_LOWER)
 
@@ -77,7 +77,7 @@ class MyAgent(ScaiBackbone):
             if troop:
                 troop.add(unit)
 
-        # add marine to closest troop wanting tanks
+        # add bunker to closest troop
         elif unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_BUNKER:
             troop = bunker_seeks_troop(unit.position)
             if troop:
@@ -229,7 +229,7 @@ class MyAgent(ScaiBackbone):
         temp_remember_these = self.remember_these.copy()
         # Checks for new units
         for unit in self.get_all_units():
-            if unit.is_cloaked:
+            if unit.is_cloaked:  # is_cloaked inverted
                 if unit not in temp_remember_these:
                     # A new unit is discovered
                     if unit.is_alive:
