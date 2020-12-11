@@ -135,6 +135,7 @@ class MyAgent(ScaiBackbone):
         # TODO: Good number?
         if len(workplaces) < 3:
             self.expansion()
+
         elif all(map(lambda troop: troop.satisfied, all_troops())) \
                 and all(map(lambda work: work.has_enough_scvs, workplaces)):
             self.kill_em_all()
