@@ -551,7 +551,7 @@ class MyAgent(ScaiBackbone):
         return False
 
     def troops_full(self) -> bool:  # AW
-        """Returns true if all troops are full"""
+        """Returns true if all defending troops are full"""
         for troop in defenders:
             if troop.wants_marines > 1:
                 return False
