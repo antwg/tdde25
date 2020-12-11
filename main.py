@@ -50,7 +50,7 @@ class MyAgent(ScaiBackbone):
             if not troop.satisfied:
                 all_satisfied = False
 
-        if all_satisfied and len(workplaces) >= 2:
+        if all_satisfied and len(workplaces) <= 2:
             if self.side() == 'right':
                 create_troop_attacking(Point2D(108, 55))
             else:
