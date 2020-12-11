@@ -75,9 +75,8 @@ class Workplace:
 
     def on_idle_my_unit(self, unit: Unit, bot: IDABot) -> None:
         """Called each time for a worker that is idle in this workplace."""
-        if self.miners_capacity < len(self.miners) or \
-                self.gasers_capacity < len(self.gasers) and \
-                self.refineries and unit in self.workers:
+        if self.scv_capacity < len(self.workers) \
+                and any(map(lambda work: work.wants_scv, workplaces)):
             new_workplace = scv_seeks_workplace(unit.position)
             self.remove(unit)
             new_workplace.add(unit)
@@ -486,11 +485,15 @@ class Workplace:
 
     def upgrade_command_center(self, cc: Unit, bot: IDABot) -> None:
         """Have given command center upgrade."""
-        if cc.is_idle \
-                and not self.wants_scvs \
-                and bot.minerals > 400 \
-                and bot.have_one(UNIT_TYPEID.TERRAN_BARRACKS):
-            cc.ability(ABILITY_ID.MORPH_ORBITALCOMMAND)
+        if cc.is_idle  and not self.wants_scvs:
+
+            if workplaces.index(self) == 0 \
+                    and bot.minerals > 400 \
+                    and bot.have_one(UNIT_TYPEID.TERRAN_BARRACKS):
+                cc.ability(ABILITY_ID.MORPH_ORBITALCOMMAND)
+            elif bot.minerals > 400 and bot.gas > 400 \
+                    and bot.have_one(UNIT_TYPEID.TERRAN_FACTORY):
+                cc.ability(ABILITY_ID.MORPH_PLANETARYFORTRESS)
 
     # DP
     def build_factory(self, bot: IDABot) -> None:
@@ -521,10 +524,10 @@ class Workplace:
         if unit_type == UnitType(UNIT_TYPEID.TERRAN_FACTORY, bot) or \
                 unit_type == UnitType(UNIT_TYPEID.TERRAN_FACTORYTECHLAB, bot):
             return bot.building_placer.get_build_location_near(home_base,
-                                                               unit_type, 35)
+                                                               unit_type, 40)
         elif unit_type == UnitType(UNIT_TYPEID.TERRAN_BARRACKS, bot):
             return bot.building_placer.get_build_location_near(home_base,
-                                                               unit_type, 30)
+                                                               unit_type, 35)
         elif unit_type == UnitType(UNIT_TYPEID.TERRAN_SUPPLYDEPOT, bot):
             return bot.building_placer.get_build_location_near(home_base,
                                                                unit_type, 20)

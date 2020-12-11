@@ -28,7 +28,7 @@ class Troop:
     target_radius: int = 7  # How close a unit must be to a target to be there
 
     leash_radius: int = 7  # How close a unit must be to leader when leash is active
-    leash_stretch: int = 3  # How far away a unit can be from leader at most when leash is active
+    leash_stretch: int = 5  # How far away a unit can be from leader at most when leash is active
 
     under_attack_wait: int = 200  # How many on_steps the troop wait before
     # declaring not under_attack (if not attacked)
@@ -138,9 +138,9 @@ class Troop:
 
     def on_idle(self, unit: Unit, bot: IDABot):
         """Called each time a member is idle."""
-        if unit.unit_type.unit_typeid in repairer_TYPEIDS and self.repair_these:
-            self.have_unit_repair(unit)
-        elif unit not in self.already_idle:
+        # if unit.unit_type.unit_typeid in repairer_TYPEIDS and self.repair_these:
+        #     self.have_unit_repair(unit)
+        if unit not in self.already_idle:
             self.already_idle.append(unit)
             self.on_just_idle(unit, bot)
 
@@ -455,12 +455,16 @@ class Troop:
 
     def have_unit_repair(self, unit: Unit) -> None:
         """Try to have the unit repair a target that needs repairs."""
-        for repair_this, repairers in self.repair_these.copy():
+        fixed = []
+        for repair_this, repairers in self.repair_these.items():
             if repair_this.max_hit_points - repair_this.hit_points:
-                del self.repair_these[repair_this]
+                fixed.append(self.repair_these[repair_this])
             elif len(repairers) < 3:
                 unit.repair(repair_this)
                 break
+
+        for unit in fixed:
+            del self.repair_these[unit]
 
     # ZW
     def try_to_win(self, bot: IDABot):
@@ -471,6 +475,14 @@ class Troop:
                 [(pos, pos) for pos in self.enemy_structures],
                 self.leader.position if self.leader else self.target_pos))
         elif bot.remember_enemies:
+            found = None
+            for unit in bot.remember_enemies:
+                if unit.position == self.target_pos:
+                    found = unit
+                    break
+            if found:
+                bot.remember_enemies.remove(unit)
+
             self.march_together_units(get_closest(
                 [(unit.position, unit.position) for unit in bot.remember_enemies],
                 self.leader.position if self.leader else self.target_pos))
@@ -492,7 +504,8 @@ class Troop:
     @property
     def have_all_reached_target(self):
         """Returns true if all members are close to target."""
-        return all([unit.position.squared_dist(self.target_pos)
+        return not self.not_reached_target and  \
+               all([unit.position.squared_dist(self.target_pos)
                     <= self.target_radius**2
                     for unit in self.get_units()])
 
