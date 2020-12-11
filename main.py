@@ -50,7 +50,7 @@ class MyAgent(ScaiBackbone):
             if not troop.is_attackers and not troop.satisfied:
                 all_satisfied = False
 
-        if all_satisfied and len(workplaces) > 2:
+        if all_satisfied and len(workplaces) >= 2:
             if self.side() == 'right':
                 create_troop_attacking(Point2D(108, 55))
             else:
@@ -441,7 +441,7 @@ class MyAgent(ScaiBackbone):
         location = self.base_location_manager.get_next_expansion(PLAYER_SELF). \
             depot_position
 
-        if self.troops_full() \
+        if (self.troops_full() or not all_troops())\
                 and can_afford(self, command_center_type) \
                 and not currently_building(self, command_center) \
                 and closest_workplace(location).get_suitable_builder():
@@ -552,7 +552,7 @@ class MyAgent(ScaiBackbone):
 
     def troops_full(self) -> bool:  # AW
         """Returns true if all troops are full"""
-        for troop in all_troops():
+        for troop in defenders:
             if troop.wants_marines > 1:
                 return False
 
