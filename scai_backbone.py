@@ -9,6 +9,34 @@ import personal
 
 # ___LISTS_OF_UNIT_TYPEIDS___
 
+terran_buildings_TYPEIDS = [
+    UNIT_TYPEID.TERRAN_COMMANDCENTER, UNIT_TYPEID.TERRAN_ORBITALCOMMAND,
+    UNIT_TYPEID.TERRAN_PLANETARYFORTRESS, UNIT_TYPEID.TERRAN_SUPPLYDEPOT,
+    UNIT_TYPEID.TERRAN_REFINERY, UNIT_TYPEID.TERRAN_REFINERYRICH,
+    UNIT_TYPEID.TERRAN_BARRACKS, UNIT_TYPEID.TERRAN_BUNKER,
+    UNIT_TYPEID.TERRAN_ENGINEERINGBAY, UNIT_TYPEID.TERRAN_FACTORY,
+    UNIT_TYPEID.TERRAN_MISSILETURRET, UNIT_TYPEID.TERRAN_SENSORTOWER,
+    UNIT_TYPEID.TERRAN_GHOSTACADEMY, UNIT_TYPEID.TERRAN_ARMORY,
+    UNIT_TYPEID.TERRAN_STARPORT, UNIT_TYPEID.TERRAN_FUSIONCORE,
+    UNIT_TYPEID.TERRAN_TECHLAB, UNIT_TYPEID.TERRAN_REACTOR
+]
+
+repairable_TYPEIDS = [
+    UNIT_TYPEID.TERRAN_SIEGETANK, UNIT_TYPEID.TERRAN_SIEGETANKSIEGED,
+    UNIT_TYPEID.TERRAN_HELLION, UNIT_TYPEID.TERRAN_HELLIONTANK,
+    UNIT_TYPEID.TERRAN_BANSHEE, UNIT_TYPEID.TERRAN_BATTLECRUISER,
+    UNIT_TYPEID.TERRAN_CYCLONE, UNIT_TYPEID.TERRAN_THOR,
+    UNIT_TYPEID.TERRAN_THORAP, UNIT_TYPEID.TERRAN_VIKINGASSAULT,
+    UNIT_TYPEID.TERRAN_VIKINGFIGHTER, UNIT_TYPEID.TERRAN_MEDIVAC,
+    UNIT_TYPEID.TERRAN_LIBERATOR, UNIT_TYPEID.TERRAN_LIBERATORAG,
+    UNIT_TYPEID.TERRAN_RAVEN, UNIT_TYPEID.TERRAN_WIDOWMINE
+] + terran_buildings_TYPEIDS
+
+repairer_TYPEIDS = [
+    UNIT_TYPEID.TERRAN_SCV,
+    UNIT_TYPEID.TERRAN_MULE,
+]
+
 grounded_command_centers_TYPEIDS = [
     UNIT_TYPEID.TERRAN_COMMANDCENTER,
     UNIT_TYPEID.TERRAN_ORBITALCOMMAND,
@@ -77,6 +105,13 @@ Point2D.to_i = lambda self: Point2DI(round(self.x), round(self.y))
 # Translate a Point2DI to a Point2D
 Point2DI.to_f = lambda self: Point2D(self.x, self.y)
 
+# Subtract a Point2DI from a Point2DI
+Point2DI.__sub__ = lambda self, other: Point2DI(self.x-other.x, self.y-other.y) \
+    if isinstance(other, Point2DI) else Point2D(self.x-other.x, self.y-other.y)
+# Add a Point2DI from a Point2DI
+Point2DI.__add__ = lambda self, other: Point2DI(self.x+other.x, self.y+other.y) \
+    if isinstance(other, Point2DI) else Point2D(self.x+other.x, self.y+other.y)
+
 
 class ScaiBackbone(IDABot):
     """Handles bootstrap of program and important startup functions."""
@@ -87,11 +122,12 @@ class ScaiBackbone(IDABot):
         IDABot.__init__(self)
         self.id = 0
         self.remember_these = []
-        self.remember_mine = []
+        self.remember_mine = {}
+        self.remember_enemies = []
         self.should_train_marines = []
         self.should_train_tanks = []
-        self.scout_path = []
-        self.scout_index = 0
+        self.should_develop_infantry = []
+        self.should_develop_vehicle = []
         self.seen_enemy_base = False
 
     def on_game_start(self) -> None:

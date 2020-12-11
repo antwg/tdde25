@@ -103,14 +103,15 @@ def unit_assignment(bot: IDABot):
                 assignment[tank] = "defence"
 
         for troop in attackers:
-            for marine in troop.marines:
-                assignment[marine] = "offence"
-            for tank in troop.tanks:
-                assignment[tank] = "offence"
+            # for marine in troop.marines:
+            #     assignment[marine] = "offence"
+            # for tank in troop.tanks:
+            #     assignment[tank] = "offence"
+            for trooper in troop.get_units():
+                assignment[trooper] = "offence"
 
         for scout in scouts:
             assignment[scout] = "scout"
-
 
     return assignment
 

@@ -3,18 +3,6 @@ from typing import Iterator, List, Optional, Union
 
 from library import *
 
-terran_buildings_ids = [
-    UNIT_TYPEID.TERRAN_COMMANDCENTER, UNIT_TYPEID.TERRAN_ORBITALCOMMAND,
-    UNIT_TYPEID.TERRAN_PLANETARYFORTRESS, UNIT_TYPEID.TERRAN_SUPPLYDEPOT,
-    UNIT_TYPEID.TERRAN_REFINERY, UNIT_TYPEID.TERRAN_REFINERYRICH,
-    UNIT_TYPEID.TERRAN_BARRACKS, UNIT_TYPEID.TERRAN_BUNKER,
-    UNIT_TYPEID.TERRAN_ENGINEERINGBAY, UNIT_TYPEID.TERRAN_FACTORY,
-    UNIT_TYPEID.TERRAN_MISSILETURRET, UNIT_TYPEID.TERRAN_SENSORTOWER,
-    UNIT_TYPEID.TERRAN_GHOSTACADEMY, UNIT_TYPEID.TERRAN_ARMORY,
-    UNIT_TYPEID.TERRAN_STARPORT, UNIT_TYPEID.TERRAN_FUSIONCORE,
-    UNIT_TYPEID.TERRAN_TECHLAB, UNIT_TYPEID.TERRAN_REACTOR
-]
-
 
 def get_closest_unit(units: Iterator[Unit], position: Point2D) -> Unit:
     """Get closest unit in ist to position."""
@@ -82,6 +70,16 @@ def get_my_type_units(bot: IDABot, searched_type: UnitTypeID):
     return units
 
 
+def get_all_hidden_bases(bot: IDABot) -> List[BaseLocation]:
+    """Return all base locations which are (mostly) hidden."""
+    found = []
+    for base in bot.base_location_manager.base_locations:
+        if not bot.map_tools.is_visible(round(base.position.x),
+                                        round(base.position.y)):
+            found.append(base)
+            return found
+
+
 # ZW
 def can_afford(bot: IDABot, unit_type: UnitType) -> bool:
     """Returns whenever a unit is affordable. """
@@ -107,7 +105,7 @@ def get_refinery(bot: IDABot, geyser: Unit) -> Optional[Unit]:
     return None
 
 
-def currently_building(bot:IDABot, unit_type):  # AW
+def currently_building(bot: IDABot, unit_type):  # AW
     """Checks if a unit is currently being built"""
     return any([not unit.is_completed for unit in
                 get_my_type_units(bot, unit_type)])

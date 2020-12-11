@@ -38,7 +38,12 @@ class Workplace:
     factories_with_techlab: List[Unit]  # All factories with a techlab, must be in factories
 
     # Important information
-    under_attack: bool  # If workplace is under attack or not
+    under_attack: int  # If workplace is under attack or not
+    was_under_attack: bool  # If workplace was attacked this frame
+
+    # Class constants
+    safe_distance: int = 40
+    under_attack_wait: int = 200
 
     # ---------- EVENTS ----------
     # These are functions triggered by different events. Most are
@@ -46,6 +51,16 @@ class Workplace:
 
     def on_step(self, bot: IDABot) -> None:
         """Called each on_Step() of IDABot."""
+        if self.under_attack:
+            if not self.was_under_attack:
+                self.was_under_attack = True
+                print(workplaces.index(self), ": Were under attack!")
+
+            self.under_attack -= 1
+        elif self.was_under_attack:
+            self.was_under_attack = False
+            print(workplaces.index(self), ": All is safe...")
+
         self.update_workers(bot)
 
         if self.command_centers:
@@ -54,10 +69,9 @@ class Workplace:
             self.build_factory(bot)
             self.build_refinery(bot)
             self.build_engineering_bay(bot)
+            self.build_armory(bot)
         else:
             self.build_command_center(bot)
-            self.upgrade_marines(bot)
-
 
     def on_idle_my_unit(self, unit: Unit, bot: IDABot) -> None:
         """Called each time for a worker that is idle in this workplace."""
@@ -78,18 +92,28 @@ class Workplace:
                 self.upgrade_factory(unit, bot)
         elif unit in self.barracks:
             bot.should_train_marines.append(unit)
+        elif unit in self.command_centers:
+            if unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_COMMANDCENTER:
+                self.upgrade_command_center(unit, bot)
+            elif unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_ORBITALCOMMAND:
+                if unit.energy == unit.max_energy:
+                    interest = random.choice(get_all_hidden_bases(bot))
+                    if interest:
+                        unit.ability(ABILITY_ID.EFFECT_SCAN, interest.position)
 
     def on_building_completed(self, building: Unit) -> None:
         """Called when a new building has been constructed."""
-        # print("done:", building)
         for builder, target in self.builders_targets.items():
             if target[1] == building.tile_position \
                     and target[0] == building.unit_type:
-                # print("builder done:", builder)
                 self.remove_builder(builder)
                 self.assign_worker_job(builder)
                 break
-        # print("miss!")
+
+    def on_damaged_member(self, unit: Unit, bot: IDABot) -> None:
+        """Called each time a unit in the workplace loses life (might be dead)."""
+        if not self.under_attack:
+            self.under_attack = self.under_attack_wait
 
     def __init__(self, location: BaseLocation, bot: IDABot):
         """Called when a new workplace is created. Note that a workplace
@@ -105,7 +129,8 @@ class Workplace:
         self.builders_targets = {}
         self.refineries = {}
         self.others = []
-        self.under_attack = False
+        self.under_attack = 0
+        self.was_under_attack = False
         self.command_centers = []
         self.barracks = []
         self.factories = []
@@ -173,6 +198,16 @@ class Workplace:
         for refinery, gasers in self.refineries.items():
             if worker in gasers:
                 self.refineries[refinery].remove(worker)
+
+    def is_gaser_in_refinery(self, worker: Unit) -> bool:
+        """Return True if the gaser is 'inside' of a refinery."""
+        for refinery, occupants in self.refineries.items():
+            if worker in occupants \
+                    and refinery.position.squared_dist(worker.position) \
+                    < (refinery.radius + worker.radius + 0.1)**2:
+                return True
+
+        return False
 
     @property
     def wants_gasers(self) -> int:
@@ -267,7 +302,7 @@ class Workplace:
     # ZW
     def assign_worker_job(self, worker: Unit) -> None:
         """Assign a worker without a job to a suitable one."""
-        if self.wants_gasers:
+        if self.wants_gasers and len(self.gasers) < len(self.miners):
             for refinery, units in self.refineries.items():
                 if len(units) < 3:
                     self.free_worker(worker)
@@ -290,11 +325,19 @@ class Workplace:
             self.assign_worker_job(builder)
 
         for worker in self.workers:
-            if self.wants_gasers and worker in self.miners:
+            if len(self.gasers) < len(self.miners) \
+                    and self.wants_gasers and worker in self.miners:
                 for refinery, units in self.refineries.items():
                     if len(units) < 3:
                         self.remove_miner(worker)
                         self.add_gaser(worker, refinery)
+                        break
+            elif len(self.gasers) > 1 + len(self.miners) \
+                    and self.wants_miners \
+                    and worker in self.gasers \
+                    and not self.is_gaser_in_refinery(worker):
+                self.remove_gaser(worker)
+                self.add_miner(worker)
 
     # DP
     def get_suitable_builder(self) -> Union[Unit, None]:
@@ -350,6 +393,7 @@ class Workplace:
 
         if workplaces[0] == self:
             if can_afford(bot, barrack) \
+                    and bot.have_one(UNIT_TYPEID.TERRAN_SUPPLYDEPOT) \
                     and len(self.barracks) < self.max_number_of_barracks \
                     and not self.is_building_unittype(barrack)\
                     and len(self.miners) > 5:
@@ -359,6 +403,7 @@ class Workplace:
 
         else:
             if can_afford(bot, barrack) \
+                    and bot.have_one(UNIT_TYPEID.TERRAN_SUPPLYDEPOT) \
                     and len(self.barracks) < self.small_number_of_barracks \
                     and not self.is_building_unittype(barrack)\
                     and len(self.miners) > 5:
@@ -369,10 +414,9 @@ class Workplace:
     def build_engineering_bay(self, bot: IDABot) -> None:
         """Builds an engineering bay."""
         engineering_bay = UnitType(UNIT_TYPEID.TERRAN_ENGINEERINGBAY, bot)
-
         if can_afford(bot, engineering_bay) \
-                and len(workplaces) >= 2\
-                and not bot.have_one(engineering_bay)\
+                and len(workplaces) >= 2 \
+                and not bot.have_one(engineering_bay) \
                 and not currently_building(bot, UNIT_TYPEID.TERRAN_ENGINEERINGBAY)\
                 and not self.is_building_unittype(engineering_bay):
             if bot.side() == 'right':
@@ -384,17 +428,23 @@ class Workplace:
 
             self.have_worker_construct(engineering_bay, location)
 
-    def upgrade_marines(self, bot: IDABot):
-        """Upgrades marines if player has an abundance of resources"""
-        engineering_bays = get_my_type_units(bot, UNIT_TYPEID.TERRAN_ENGINEERINGBAY)
+    def build_armory(self, bot: IDABot) -> None:
+        """Builds a armory."""
+        armory = UnitType(UNIT_TYPEID.TERRAN_ARMORY, bot)
+        if can_afford(bot, armory) \
+                and len(workplaces) >= 3 \
+                and bot.have_one(UNIT_TYPEID.TERRAN_FACTORY) \
+                and not bot.have_one(armory) \
+                and not currently_building(bot, UNIT_TYPEID.TERRAN_ARMORY)\
+                and not self.is_building_unittype(armory):
+            if bot.side() == 'right':
+                location = bot.building_placer.get_build_location_near(
+                    Point2DI(110, 23), armory)
+            else:
+                location = bot.building_placer.get_build_location_near(
+                    Point2DI(41, 148), armory)
 
-        if bot.minerals >= 600 and bot.gas >= 600 and engineering_bays:
-
-            engineering_bay = engineering_bays[0]
-
-            engineering_bay.research(UPGRADE_ID.TERRANINFANTRYWEAPONSLEVEL1)
-            engineering_bay.research(UPGRADE_ID.TERRANINFANTRYARMORSLEVEL1)
-
+            self.have_worker_construct(armory, location)
 
     # ZW
     def build_refinery(self, bot: IDABot) -> None:
@@ -428,6 +478,14 @@ class Workplace:
                 position = self.location.depot_position
                 self.have_worker_construct(command_type, position)
 
+    def upgrade_command_center(self, cc: Unit, bot: IDABot) -> None:
+        """Have given command center upgrade."""
+        if cc.is_idle \
+                and not self.wants_scvs \
+                and bot.minerals > 400 \
+                and bot.have_one(UNIT_TYPEID.TERRAN_BARRACKS):
+            cc.ability(ABILITY_ID.MORPH_ORBITALCOMMAND)
+
     # DP
     def build_factory(self, bot: IDABot) -> None:
         """Builds a factory when necessary."""
@@ -436,6 +494,7 @@ class Workplace:
 
         if workplaces[0] == self:
             if can_afford(bot, factory) \
+                    and bot.have_one(UNIT_TYPEID.TERRAN_BARRACKS) \
                     and len(self.factories) < self.max_number_of_factories \
                     and not currently_building(bot, UNIT_TYPEID.TERRAN_FACTORY) \
                     and not self.is_building_unittype(factory)\
@@ -450,19 +509,18 @@ class Workplace:
         if can_afford(bot, factory_techlab):
             factory.train(factory_techlab)
 
-    def building_location_finder(self, bot: IDABot, unit_type) -> Point2D:
+    def building_location_finder(self, bot: IDABot, unit_type: UnitType) -> Point2D:
         """Finds a suitable location to build a unit of given type"""
-        home_base = self.location.position
-        home_base_2di = Point2DI(int(home_base.x), int(home_base.y))
+        home_base = self.location.position.to_i()
         if unit_type == UnitType(UNIT_TYPEID.TERRAN_FACTORY, bot) or \
-            unit_type == UnitType(UNIT_TYPEID.TERRAN_FACTORYTECHLAB, bot):
-            return bot.building_placer.get_build_location_near(home_base_2di,
+                unit_type == UnitType(UNIT_TYPEID.TERRAN_FACTORYTECHLAB, bot):
+            return bot.building_placer.get_build_location_near(home_base,
                                                                unit_type, 35)
         elif unit_type == UnitType(UNIT_TYPEID.TERRAN_BARRACKS, bot):
-            return bot.building_placer.get_build_location_near(home_base_2di,
+            return bot.building_placer.get_build_location_near(home_base,
                                                                unit_type, 30)
         elif unit_type == UnitType(UNIT_TYPEID.TERRAN_SUPPLYDEPOT, bot):
-            return bot.building_placer.get_build_location_near(home_base_2di,
+            return bot.building_placer.get_build_location_near(home_base,
                                                                unit_type, 20)
         else:
             raise Exception("Found location is bad.")
@@ -623,15 +681,25 @@ class Workplace:
         return worker
 
     def flush_units(self) -> List[Unit]:
-        """Remove all but a few workers."""
-
+        """Remove all but a few workers (not structures)."""
+        free = []
         i = 0
-        while i < len(self.workers) > 3:
-            worker = self.workers[1]
-            if worker not in self.builders:
-                self.remove(worker)
-            else:
-                i += 1
+        while i < len(self.get_units()):
+            unit = self.get_units()[i]
+            if not unit.unit_type.is_building and unit not in self.builders \
+                    and not self.is_gaser_in_refinery(unit):
+                if unit not in self.workers or len(self.workers) > 3:
+                    self.remove(unit)
+                    unit.stop()
+                    free.append(unit)
+                    continue
+
+            i += 1
+        return free
+
+    def within_proximity(self, pos: Point2D) -> bool:
+        """Return True if the point is within the proximity of the base."""
+        return pos.squared_dist(self.location.position) < self.safe_distance**2
 
     def str_worker(self, worker: Unit) -> str:
         """Create a string for a worker to be more informative."""
