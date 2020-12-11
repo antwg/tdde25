@@ -75,7 +75,13 @@ class Workplace:
 
     def on_idle_my_unit(self, unit: Unit, bot: IDABot) -> None:
         """Called each time for a worker that is idle in this workplace."""
-        if unit in self.miners and self.mineral_fields:
+        if self.miners_capacity < len(self.miners) or \
+                self.gasers_capacity < len(self.gasers) and \
+                self.refineries and unit in self.workers:
+            new_workplace = scv_seeks_workplace(unit.position)
+            self.remove(unit)
+            new_workplace.add(unit)
+        elif unit in self.miners and self.mineral_fields:
             unit.right_click(random.choice(self.mineral_fields))
         elif unit in self.gasers:
             for refinery, gasers in self.refineries.items():

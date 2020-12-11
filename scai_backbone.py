@@ -156,7 +156,7 @@ class ScaiBackbone(IDABot):
 
         participant_1 = create_participants(Race.Terran, bot1, "Dank_mejmejs - SCAI-07")
         # participant_2 = create_participants(Race.Terran, bot2)
-        participant_2 = create_computer(Race.Random, Difficulty.Easy)
+        participant_2 = create_computer(Race.Terran, Difficulty.Easy)
 
         coordinator.set_real_time(False)
         coordinator.set_participants([participant_1, participant_2])
