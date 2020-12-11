@@ -47,7 +47,7 @@ class MyAgent(ScaiBackbone):
         all_satisfied = True
         for troop in all_troops():
             troop.on_step(self)
-            if not troop.is_attackers and not troop.satisfied:
+            if not troop.satisfied:
                 all_satisfied = False
 
         if all_satisfied and len(workplaces) >= 2:
