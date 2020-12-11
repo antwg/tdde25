@@ -51,11 +51,10 @@ class MyAgent(ScaiBackbone):
                 all_satisfied = False
 
         if all_satisfied and len(workplaces) > 2:
-            if len(workplaces) == 2:
-                if self.side() == 'right':
-                    create_troop_attacking(Point2D(108, 55))
-                else:
-                    create_troop_attacking(Point2D(46, 117))
+            if self.side() == 'right':
+                create_troop_attacking(Point2D(108, 55))
+            else:
+                create_troop_attacking(Point2D(46, 117))
 
         remove_terminated_troops()
         Troop.check_validity_enemy_structures(self)
