@@ -27,7 +27,7 @@ class MyAgent(ScaiBackbone):
         create_workplace(self.base_location_manager
                          .get_player_starting_base_location(PLAYER_SELF), self)
 
-        self.debug_give_all_resources()
+        # self.debug_give_all_resources()
 
     def on_step(self) -> None:
         """Called each cycle, passed from IDABot.on_step()."""

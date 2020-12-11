@@ -515,10 +515,10 @@ class Workplace:
         if unit_type == UnitType(UNIT_TYPEID.TERRAN_FACTORY, bot) or \
                 unit_type == UnitType(UNIT_TYPEID.TERRAN_FACTORYTECHLAB, bot):
             return bot.building_placer.get_build_location_near(home_base,
-                                                               unit_type, 35)
+                                                               unit_type, 40)
         elif unit_type == UnitType(UNIT_TYPEID.TERRAN_BARRACKS, bot):
             return bot.building_placer.get_build_location_near(home_base,
-                                                               unit_type, 30)
+                                                               unit_type, 35)
         elif unit_type == UnitType(UNIT_TYPEID.TERRAN_SUPPLYDEPOT, bot):
             return bot.building_placer.get_build_location_near(home_base,
                                                                unit_type, 20)
