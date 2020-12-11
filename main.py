@@ -62,7 +62,7 @@ class MyAgent(ScaiBackbone):
             self.develop_vehicle()
         self.scout()
 
-        if not self.seen_enemy_base:
+        if not Troop.enemy_structures:
             self.scout()
 
     # ---------- LOCAL EVENTS ----------
@@ -160,7 +160,7 @@ class MyAgent(ScaiBackbone):
 
         #     if unit.position.dist(self.scout_path[self.scout_index]) < 3:
         #         self.scout_index = (self.scout_index + 1) % len(self.scout_path)
-            # unit.move(self.scout_path[self.scout_index])
+        # unit.move(self.scout_path[self.scout_index])
 
     def on_damaged_my_unit(self, unit: Unit) -> None:
         """Called each time a unit has lost life (even if dead)."""
@@ -329,7 +329,7 @@ class MyAgent(ScaiBackbone):
             lambda b: b.is_constructing(marine), self.get_my_units())))
 
         for troop in all_troops():
-            if troop.wants_marines - not_promised_marine > 0\
+            if troop.wants_marines - not_promised_marine > 0 \
                     and can_afford(self, marine):
 
                 barrack = get_closest_unit(barracks, troop.target_pos)
@@ -399,49 +399,52 @@ class MyAgent(ScaiBackbone):
 
     # ---------- ORGANS ----------
     # Major impact functions that are important for the bot.
-   
+
     # DP
     def scout(self):
         """Finds suitable scout (miner) that checks all base locations."""
-        if len(defenders) >= 1:
-            if not all_base_chords:
-                # Gets all base chords
-                for cords in choke_point_dict:
-                    if cords not in [(26, 137), (125, 30)]:
-                        all_base_chords.append(cords)
+        if not all_base_chords:
+            # Gets all base chords
+            for cords in choke_point_dict:
+                if cords not in [(26, 137), (125, 30)]:
+                    all_base_chords.append(cords)
 
-            if not scouts:
-                # Finds and adds scout to scouts
-                scout = workplaces[-1].get_scout()
+        if not scouts:
+            # Finds and adds scout to scouts
+            scout = workplaces[-1].get_scout()
 
-                if scout:
-                    scout.move(self.closest_base(scout.position, all_base_chords))
+            if scout:
+                closest_base = self.closest_position(scout.position, all_base_chords)
+                scout.move(closest_base)
 
-            if scouts and len(all_base_chords) > 0:
-                scout = scouts[0]
-                closest_base = self.closest_base(scout.position, all_base_chords)
-                # Move to closest base chord. If there or idle, go to next site.
-                if scout.is_idle or scout.position.dist(Point2D(closest_base.x, closest_base.y)) <= 1.5\
-                        and self.seen_enemy_base:
+        if scouts and len(all_base_chords) > 0:
+            scout = scouts[0]
+            closest_base = self.closest_position(scout.position, all_base_chords)
+            real_base = get_closest([(base.position, base) for base in \
+                                     self.base_location_manager.base_locations], closest_base)
+            # Move to closest base chord. If there or idle, go to next site.
+            if scout.is_idle and Troop.enemy_structures:
+                if real_base.contains_position(closest_base) and real_base.contains_position(scout.position):
                     all_base_chords.remove((closest_base.x, closest_base.y))
                     scout.move(closest_base)
-                if not self.seen_enemy_base:
-                    if self.side() == "right":
-                        scout.move(Point2D(26, 137))
-                        self.seen_enemy_base = True
-                    else:
-                        scout.move(Point2D(125, 30))
-                        self.seen_enemy_base = True
+                else:
+                    scout.move(closest_base)
+
+            elif not Troop.enemy_structures:
+                if self.side() == "right":
+                    scout.move(Point2D(26, 137))
+                else:
+                    scout.move(Point2D(125, 30))
 
     def expansion(self):  # AW
         command_center = UNIT_TYPEID.TERRAN_COMMANDCENTER
         command_center_type = UnitType(UNIT_TYPEID.TERRAN_COMMANDCENTER, self)
-        location = self.base_location_manager.get_next_expansion(PLAYER_SELF).\
+        location = self.base_location_manager.get_next_expansion(PLAYER_SELF). \
             depot_position
 
         if self.troops_full() \
-                and can_afford(self, command_center_type)\
-                and not currently_building(self, command_center)\
+                and can_afford(self, command_center_type) \
+                and not currently_building(self, command_center) \
                 and closest_workplace(location).get_suitable_builder():
 
             workplace = closest_workplace(location)
@@ -491,7 +494,7 @@ class MyAgent(ScaiBackbone):
 
     def side(self):
         """Return what side player spawns on"""
-        start_location = self.base_location_manager.\
+        start_location = self.base_location_manager. \
             get_player_starting_base_location(PLAYER_SELF).position
         start_location_tuple = (start_location.x, start_location.y)
 
@@ -500,11 +503,11 @@ class MyAgent(ScaiBackbone):
         else:
             return 'left'
 
-    def closest_base(self, pos: Point2D, locations):
+    def closest_position(self, pos: Point2D, chord_list):
         """Checks the closest base_location to a position"""
         closest = None
         distance = 0
-        for base_chords in locations:
+        for base_chords in chord_list:
             base = Point2D(base_chords[0], base_chords[1])
             # Point2D.dist(...) is a function in scai_backbone
             if not closest or distance > base.dist(pos):
@@ -546,6 +549,7 @@ class MyAgent(ScaiBackbone):
             if troop.wants_marines <= 1:
                 return True
 
+
 # ========== END OF MY_AGENT ==========
 
 
@@ -558,4 +562,3 @@ if __name__ == "__main__":
     pr.disable()
     # after your program ends
     pr.print_stats(sort="time")
-

@@ -128,7 +128,6 @@ class ScaiBackbone(IDABot):
         self.should_train_tanks = []
         self.should_develop_infantry = []
         self.should_develop_vehicle = []
-        self.seen_enemy_base = False
 
     def on_game_start(self) -> None:
         IDABot.on_game_start(self)
