@@ -170,7 +170,7 @@ class Troop:
             if self.target_pos in self.enemy_structures:
                 del self.enemy_structures[self.target_pos]
 
-            # self.try_to_win(bot)
+            self.try_to_win(bot)
 
         elif unit in self.tanks and unit not in self.tanks_siege \
                 and not (unit.has_target and unit.target == PLAYER_ENEMY):
