@@ -115,9 +115,14 @@ class MyAgent(ScaiBackbone):
                 (refineries_TYPEIDS
                  + [UNIT_TYPEID.TERRAN_BARRACKS,
                     UNIT_TYPEID.TERRAN_ENGINEERINGBAY,
-                    UNIT_TYPEID.TERRAN_FACTORY,
                     UNIT_TYPEID.TERRAN_ARMORY]):
             work = closest_workplace(unit.position)
+            if work:
+                work.add(unit)
+
+        # add factories to first workplace only
+        elif unit.unit_type.unit_typeid == UNIT_TYPEID.TERRAN_FACTORY:
+            work = workplaces[0]
             if work:
                 work.add(unit)
 
@@ -158,10 +163,6 @@ class MyAgent(ScaiBackbone):
 
         if unit in scouts:
             self.scout()
-
-        #     if unit.position.dist(self.scout_path[self.scout_index]) < 3:
-        #         self.scout_index = (self.scout_index + 1) % len(self.scout_path)
-        # unit.move(self.scout_path[self.scout_index])
 
     def on_damaged_my_unit(self, unit: Unit) -> None:
         """Called each time a unit has lost life (even if dead)."""
