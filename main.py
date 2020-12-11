@@ -20,14 +20,12 @@ class MyAgent(ScaiBackbone):
         """Called on start up, passed from IDABot.on_game_start()."""
         ScaiBackbone.on_game_start(self)
 
-        if self.side() == 'right':
-            create_troop_defending(Point2D(114, 46))
-        else:
-            create_troop_defending(Point2D(38, 122))
+        # if self.side() == 'right':
+        #     create_troop_defending(Point2D(114, 46))
+        # else:
+        #     create_troop_defending(Point2D(38, 122))
         create_workplace(self.base_location_manager
                          .get_player_starting_base_location(PLAYER_SELF), self)
-
-        # self.debug_give_all_resources()
 
     def on_step(self) -> None:
         """Called each cycle, passed from IDABot.on_step()."""
@@ -126,11 +124,11 @@ class MyAgent(ScaiBackbone):
             if work:
                 work.add(unit)
 
-            if len(workplaces) == 1:
-                if self.side() == 'right':
-                    create_troop_attacking(Point2D(108, 55))
-                else:
-                    create_troop_attacking(Point2D(46, 117))
+                if len(workplaces) == 2:
+                    if self.side() == 'right':
+                        create_troop_attacking(Point2D(108, 55))
+                    else:
+                        create_troop_attacking(Point2D(46, 117))
 
         # TODO: Good number?
         if len(workplaces) < 3:
@@ -543,8 +541,10 @@ class MyAgent(ScaiBackbone):
     def troops_full(self) -> bool:  # AW
         """Returns true if all troops are full"""
         for troop in all_troops():
-            if troop.wants_marines <= 1:
-                return True
+            if troop.wants_marines > 1:
+                return False
+
+        return True
 
 # ========== END OF MY_AGENT ==========
 
