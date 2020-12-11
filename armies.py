@@ -170,7 +170,7 @@ class Troop:
             if self.target_pos in self.enemy_structures:
                 del self.enemy_structures[self.target_pos]
 
-            self.try_to_win(bot)
+            # self.try_to_win(bot)
 
         elif unit in self.tanks and unit not in self.tanks_siege \
                 and not (unit.has_target and unit.target == PLAYER_ENEMY):
@@ -562,8 +562,16 @@ class Troop:
                 if bot.map_tools.is_visible(round(target.x), round(target.y)):
                     cls.enemy_structures[target] = True
 
-                    if not any(map(lambda unit: unit.position == target,
-                                   bot.get_all_units())):
+                    found = None
+                    for unit in bot.get_all_units():
+                        if unit.player == PLAYER_ENEMY:
+                            if unit.position.x == target.x \
+                                    and unit.position.y == target.y:
+                                if unit.is_alive:
+                                    found = unit
+                                    break
+
+                    if not found:
                         remove_these.append(target)
 
         for target in remove_these:

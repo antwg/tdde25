@@ -44,8 +44,18 @@ class MyAgent(ScaiBackbone):
                 defender.defend_workplace(workplace, self)
             workplace.on_step(self)
 
+        all_satisfied = True
         for troop in all_troops():
             troop.on_step(self)
+            if not troop.is_attackers and not troop.satisfied:
+                all_satisfied = False
+
+        if all_satisfied and len(workplaces) > 2:
+            if len(workplaces) == 2:
+                if self.side() == 'right':
+                    create_troop_attacking(Point2D(108, 55))
+                else:
+                    create_troop_attacking(Point2D(46, 117))
 
         remove_terminated_troops()
         Troop.check_validity_enemy_structures(self)
@@ -129,12 +139,6 @@ class MyAgent(ScaiBackbone):
             if work:
                 work.add(unit)
 
-                if len(workplaces) == 2:
-                    if self.side() == 'right':
-                        create_troop_attacking(Point2D(108, 55))
-                    else:
-                        create_troop_attacking(Point2D(46, 117))
-
         # TODO: Good number?
         if len(workplaces) < 3:
             self.expansion()
@@ -214,9 +218,6 @@ class MyAgent(ScaiBackbone):
             for workplace in workplaces:
                 if unit in workplace.mineral_fields:
                     workplace.mineral_fields.remove(unit)
-
-        if unit.position in Troop.enemy_structures and not unit.is_alive:
-            Troop.lost_enemy_structure(unit, self)
 
         if unit.player == PLAYER_ENEMY:
             for troop in all_troops():
@@ -462,16 +463,24 @@ class MyAgent(ScaiBackbone):
 
     def kill_em_all(self):
         """Flush almost all units to a single troop and attack."""
-        army = attackers[0]
 
-        self.send_chat("Going for the win!")
+        army = None
+        for attacker in attackers:
+            if not attacker.satisfied:
+                army = attacker
+                break
 
-        for troop in all_troops():
-            if troop != army:
-                army.add(troop.flush_troop())
+        if army:
+            army.prohibit_refill = True
 
-        for workplace in workplaces:
-            army.add(workplace.flush_units())
+            self.send_chat("Going for the win!")
+
+            for troop in defenders:
+                if troop != army:
+                    army.add(troop.flush_troop())
+
+            for workplace in workplaces:
+                army.add(workplace.flush_units())
 
     def try_to_scan(self, point: Point2D) -> None:
         """Look for an orbital command center and have it scan given position."""
