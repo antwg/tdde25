@@ -668,7 +668,7 @@ class Workplace:
     @property
     def max_number_of_barracks(self) -> int:
         """return the max number of barracks"""
-        return min(2 * len(workplaces), 4)
+        return min(1 * len(workplaces), 6)
 
     @property
     def max_number_of_factories(self) -> int:
@@ -678,7 +678,7 @@ class Workplace:
     @property
     def small_number_of_barracks(self) -> int:
         """return number of barracks for base expansions"""
-        return 0
+        return 1
 
     # ---------- MISC ----------
     # Other needed functions.
