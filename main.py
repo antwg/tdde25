@@ -13,8 +13,8 @@ from workplace import *
 class MyAgent(ScaiBackbone):
     """A bot that uses IDABot to play and win Starcraft 2 matches."""
 
-    # ---------- GLOBAL EVENTS ----------
-    # These are functions triggered by different special events.
+    # ---------- FOUNDATION EVENTS ----------
+    # These are events (functions) which are triggered via the IDABot.
 
     def on_game_start(self) -> None:
         """Called on start up, passed from IDABot.on_game_start()."""
@@ -50,7 +50,7 @@ class MyAgent(ScaiBackbone):
             if not troop.satisfied:
                 all_satisfied = False
 
-        if all_satisfied and len(workplaces) <= 2:
+        if all_satisfied and len(workplaces) >= 2:
             if self.side() == 'right':
                 create_troop_attacking(Point2D(108, 55))
             else:

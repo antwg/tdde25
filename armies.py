@@ -250,6 +250,7 @@ class Troop:
 
     def defend_workplace(self, work: Workplace, bot: IDABot) -> None:
         """Have units defend given workplace from enemies."""
+        # TODO: Not yet fully implemented, fix or remove
         for unit in bot.get_all_units():
             if unit.player == PLAYER_ENEMY \
                     and work.within_proximity(unit.position):
