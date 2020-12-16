@@ -63,8 +63,8 @@ class MyAgent(ScaiBackbone):
             self.develop_infantry()
         if self.should_develop_vehicle:
             self.develop_vehicle()
-
-        self.scout()
+        if not scouts:
+            self.scout()
 
     # ---------- LOCAL EVENTS ----------
     # These are events handling individual units in special states only
@@ -187,7 +187,6 @@ class MyAgent(ScaiBackbone):
         # remove scout from scouts list
         if unit in scouts:
             remove_scout(unit)
-            self.scout()
 
     # ---------- GLOBAL EVENTS ----------
     # These events are triggered by all units,
