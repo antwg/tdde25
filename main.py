@@ -72,7 +72,7 @@ class MyAgent(ScaiBackbone):
             self.develop_infantry()
         if self.should_develop_vehicle:
             self.develop_vehicle()
-
+            
         if not scouts:
             self.scout()
 

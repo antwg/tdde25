@@ -22,7 +22,7 @@ class Troop:
 
     target_radius: int = 7  # How close a unit must be to a target to be there
 
-    leash_radius: int = 7  # How close a unit must be to leader when leash is active
+    leash_radius: int = 4  # How close a unit must be to leader when leash is active
     leash_stretch: int = 5  # How far away a unit can be from leader at most when leash is active
 
     under_attack_wait: int = 200  # How many on_steps the troop wait before
