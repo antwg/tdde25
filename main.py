@@ -3,6 +3,7 @@ from armies import *
 from workplace import *
 
 
+
 class MyAgent(ScaiBackbone):
     """A bot that uses IDABot to play and win Starcraft 2 matches."""
 

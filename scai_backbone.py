@@ -5,6 +5,7 @@ from library import *
 
 import personal
 
+
 # ___LISTS_OF_UNIT_TYPEIDS___
 
 terran_buildings_TYPEIDS = [
@@ -152,6 +153,7 @@ class ScaiBackbone(IDABot):
         coordinator = Coordinator(personal.game_dir)
 
         bot1 = cls()
+        # bot2 = agent9()
         # bot2 = ScaiBackbone()
 
         participant_1 = create_participants(Race.Terran, bot1, "Dank_mejmejs - SCAI-07")
