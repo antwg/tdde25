@@ -1,5 +1,4 @@
-from math import ceil, floor
-from typing import Iterator, List, Optional, Union
+from typing import Iterator, List, Optional, Any
 
 from library import *
 
@@ -9,7 +8,7 @@ def get_closest_unit(units: Iterator[Unit], position: Point2D) -> Unit:
     return get_closest([(unit.position, unit) for unit in units], position)
 
 
-def get_closest(items: List[tuple], position: Point2D):
+def get_closest(items: List[tuple], position: Point2D) -> Any:
     """Get closest object in tuples to given point where the tuples first
     element is it's position and the second is the object.
     """
@@ -50,7 +49,6 @@ def get_mineral_fields(bot: IDABot, base_location: BaseLocation) -> List[Unit]: 
     return mineral_fields
 
 
-# ZW
 def get_my_types_units(bot: IDABot, searched_types: List[UnitTypeID]):
     """Get all owned units with oe of the given unit types."""
     units = []
@@ -60,7 +58,6 @@ def get_my_types_units(bot: IDABot, searched_types: List[UnitTypeID]):
     return units
 
 
-# ZW
 def get_my_type_units(bot: IDABot, searched_type: UnitTypeID):
     """Get all owned units with given unit type."""
     units = []
@@ -80,7 +77,6 @@ def get_all_hidden_bases(bot: IDABot) -> List[BaseLocation]:
             return found
 
 
-# ZW
 def can_afford(bot: IDABot, unit_type: UnitType) -> bool:
     """Returns whenever a unit is affordable. """
     return bot.minerals >= unit_type.mineral_price \
@@ -105,7 +101,7 @@ def get_refinery(bot: IDABot, geyser: Unit) -> Optional[Unit]:
     return None
 
 
-def currently_building(bot: IDABot, unit_type):  # AW
+def currently_building(bot: IDABot, unit_type) -> bool:
     """Checks if a unit is currently being built"""
     return any([not unit.is_completed for unit in
                 get_my_type_units(bot, unit_type)])
