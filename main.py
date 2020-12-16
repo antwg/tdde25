@@ -1,11 +1,4 @@
-import time
-import random
-from copy import deepcopy
-from typing import List
-
-from scai_backbone import *
 from debug import *
-from extra import *
 from armies import *
 from workplace import *
 
@@ -27,6 +20,8 @@ class MyAgent(ScaiBackbone):
         #     create_troop_defending(Point2D(38, 122))
         create_workplace(self.base_location_manager
                          .get_player_starting_base_location(PLAYER_SELF), self)
+
+        self.debug_give_all_resources()
 
     def on_step(self) -> None:
         """Called each cycle, passed from IDABot.on_step()."""
@@ -51,7 +46,7 @@ class MyAgent(ScaiBackbone):
             if not troop.satisfied:
                 all_satisfied = False
 
-        if all_satisfied and len(workplaces) >= 2:
+        if all_satisfied and len(workplaces) >= 1:
             if self.side() == 'right':
                 create_troop_attacking(Point2D(108, 55))
             else:
@@ -68,10 +63,8 @@ class MyAgent(ScaiBackbone):
             self.develop_infantry()
         if self.should_develop_vehicle:
             self.develop_vehicle()
-        self.scout()
 
-        if not Troop.enemy_structures:
-            self.scout()
+        self.scout()
 
     # ---------- LOCAL EVENTS ----------
     # These are events handling individual units in special states only
@@ -140,12 +133,14 @@ class MyAgent(ScaiBackbone):
                 work.add(unit)
 
         # TODO: Good number?
-        if len(workplaces) < 3:
+        if len(workplaces) < 1:
             self.expansion()
 
-        elif all(map(lambda troop: troop.satisfied, all_troops())) \
+        elif all(map(lambda troop: troop.satisfied, defenders)) \
+                and attackers \
                 and all(map(lambda work: work.has_enough_scvs, workplaces)):
-            self.kill_em_all()
+            pass
+            # self.kill_em_all()
 
     def on_idle_my_unit(self, unit: Unit) -> None:
         """Called each time a unit is idle."""
@@ -197,7 +192,7 @@ class MyAgent(ScaiBackbone):
     # ---------- GLOBAL EVENTS ----------
     # These events are triggered by all units,
 
-    def on_discover_unit(self, unit: Unit):
+    def on_discover_unit(self, unit: Unit) -> None:
         """Called when a unit is discovered, includes some on new_my_unit."""
         if unit.unit_type.unit_typeid in minerals_TYPEIDS and unit.minerals_left_in_mineralfield > 0:
             for workplace in workplaces:
@@ -212,7 +207,7 @@ class MyAgent(ScaiBackbone):
         if unit.player == PLAYER_ENEMY and unit.unit_type.is_building:
             Troop.found_enemy_structure(unit, self)
 
-    def on_lost_unit(self, unit: Unit):
+    def on_lost_unit(self, unit: Unit) -> None:
         """Called when a unit is lost, even when lost_my_unit."""
         if unit.unit_type.unit_typeid in minerals_TYPEIDS:
             for workplace in workplaces:
@@ -220,6 +215,10 @@ class MyAgent(ScaiBackbone):
                     workplace.mineral_fields.remove(unit)
 
         if unit.player == PLAYER_ENEMY:
+            if not unit.is_alive and unit.unit_type.is_building \
+                    and Troop.has_enemy_structure_as_target(unit):
+                Troop.lost_enemy_structure(unit, self)
+
             for troop in all_troops():
                 if unit in troop.foes_to_close:
                     troop.foes_to_close.remove(unit)
@@ -229,7 +228,7 @@ class MyAgent(ScaiBackbone):
 
     remember_mine: Dict[Unit, int] = {}  # Units and their remembered life
 
-    def trigger_events_for_my_units(self):
+    def trigger_events_for_my_units(self) -> None:
         """Find bot units with special conditions and activate triggers for them."""
         temp_remember_these = self.remember_mine.copy()
         # Checks for new units
@@ -264,7 +263,7 @@ class MyAgent(ScaiBackbone):
     remember_these: List[Unit]
     remember_enemies: List[Unit]
 
-    def trigger_events_for_all_units(self):
+    def trigger_events_for_all_units(self) -> None:
         """Find all units with special conditions and activate triggers for them."""
         temp_remember_these = self.remember_these.copy()
 
@@ -272,7 +271,7 @@ class MyAgent(ScaiBackbone):
 
         # Checks for new units
         for unit in self.get_all_units():
-            if unit.is_cloaked:  # is_cloaked inverted
+            if unit.is_cloaked:  # is_cloaked <=> Visible on the map
                 if unit not in temp_remember_these:
                     # A new unit is discovered
                     if unit.is_alive:
@@ -289,7 +288,10 @@ class MyAgent(ScaiBackbone):
 
         for remembered_unit in temp_remember_these:
             # A remembered unit is lost
-            if not remembered_unit.is_alive or not remembered_unit.is_cloaked:
+            if not remembered_unit.is_alive or not remembered_unit.is_cloaked \
+                    or not self.map_tools.is_visible(
+                                            round(remembered_unit.position.x),
+                                            round(remembered_unit.position.y)):
                 self.on_lost_unit(remembered_unit)
 
                 if remembered_unit in self.remember_enemies:
@@ -299,8 +301,7 @@ class MyAgent(ScaiBackbone):
     # ---------- TRAIN ----------
     # Functions that tries to train a unit or upgrade it.
 
-    # ZW
-    def train_scv(self):
+    def train_scv(self) -> None:
         """Builds a SCV if possible on a base if needed."""
         scv_type = UnitType(UNIT_TYPEID.TERRAN_SCV, self)
         if can_afford(self, scv_type):
@@ -317,8 +318,7 @@ class MyAgent(ScaiBackbone):
                     count_needed -= 1
                     ccs.remove(trainer)
 
-    # ZW
-    def train_marine(self):
+    def train_marine(self) -> None:
         """Train marines if more are required."""
 
         # Tries to fill troops by producing marines
@@ -341,8 +341,7 @@ class MyAgent(ScaiBackbone):
 
         self.should_train_marines = []
 
-    # ZW
-    def train_tank(self):
+    def train_tank(self) -> None:
         """Train tanks if more are required."""
 
         tank = UnitType(UNIT_TYPEID.TERRAN_SIEGETANK, self)
@@ -367,7 +366,7 @@ class MyAgent(ScaiBackbone):
 
         self.should_train_tanks = []
 
-    def develop_infantry(self):
+    def develop_infantry(self) -> None:
         """Use engineering bays to develop infantry units."""
 
         if self.minerals >= 600 and self.gas >= 600 and self.should_develop_infantry:
@@ -382,7 +381,7 @@ class MyAgent(ScaiBackbone):
 
         self.should_develop_infantry = []
 
-    def develop_vehicle(self):
+    def develop_vehicle(self) -> None:
         """Use armories to develop vehicles units."""
 
         if self.minerals >= 600 and self.gas >= 600 and self.should_develop_vehicle:
@@ -400,8 +399,7 @@ class MyAgent(ScaiBackbone):
     # ---------- ORGANS ----------
     # Major impact functions that are important for the bot.
 
-    # DP
-    def scout(self):
+    def scout(self) -> None:
         """Finds suitable scout (miner) that checks all base locations."""
         if not all_base_chords:
             # Gets all base chords
@@ -436,7 +434,7 @@ class MyAgent(ScaiBackbone):
                 else:
                     scout.move(Point2D(125, 30))
 
-    def expansion(self):  # AW
+    def expansion(self) -> None:
         command_center = UNIT_TYPEID.TERRAN_COMMANDCENTER
         command_center_type = UnitType(UNIT_TYPEID.TERRAN_COMMANDCENTER, self)
         location = self.base_location_manager.get_next_expansion(PLAYER_SELF). \
@@ -461,7 +459,7 @@ class MyAgent(ScaiBackbone):
                 point = self.choke_points((location.x, location.y))
                 create_troop_defending(point)
 
-    def kill_em_all(self):
+    def kill_em_all(self) -> None:
         """Flush almost all units to a single troop and attack."""
 
         army = None
@@ -500,7 +498,7 @@ class MyAgent(ScaiBackbone):
     # ---------- NAVIGATION ----------
     # The handling and understanding of positions and distances.
 
-    def side(self):
+    def side(self) -> str:
         """Return what side player spawns on"""
         start_location = self.base_location_manager. \
             get_player_starting_base_location(PLAYER_SELF).position
@@ -511,8 +509,8 @@ class MyAgent(ScaiBackbone):
         else:
             return 'left'
 
-    def closest_position(self, pos: Point2D, chord_list):
-        """Checks the closest base_location to a position"""
+    def closest_position(self, pos: Point2D, chord_list) -> Optional[Point2D]:
+        """Checks the closest base_location to a position."""
         closest = None
         distance = 0
         for base_chords in chord_list:
@@ -524,21 +522,14 @@ class MyAgent(ScaiBackbone):
 
         return closest
 
-    def get_coords(self):
-        """Prints position of all workers"""
-        for unit in self.get_my_units():
-            text = str(unit.position)
-            self.map_tools.draw_text(unit.position, text, Color(255, 255, 255))
-
     def choke_points(self, coordinates) -> Point2D:  # AW
-        """Returns the appropriate choke point"""
+        """Returns the appropriate choke point."""
         return Point2D(choke_point_dict[coordinates][0],
                        choke_point_dict[coordinates][1])
 
     # ---------- LOGIC ARGUMENTS ----------
     # Functions that provide simple values about its state
 
-    # ZW
     def have_one(self, utid: Union[UNIT_TYPEID, UnitType]) -> bool:
         """Check if there exists at least one of these units in my_units."""
         if isinstance(utid, UNIT_TYPEID):
@@ -551,8 +542,8 @@ class MyAgent(ScaiBackbone):
                     return True
         return False
 
-    def troops_full(self) -> bool:  # AW
-        """Returns true if all defending troops are full"""
+    def troops_full(self) -> bool:
+        """Returns true if all defending troops are full."""
         for troop in defenders:
             if troop.wants_marines > 1:
                 return False

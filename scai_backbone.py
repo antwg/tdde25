@@ -1,8 +1,6 @@
 import os
-import inspect
 from math import sqrt
 
-from typing import Optional, List
 from library import *
 
 import personal
@@ -93,7 +91,7 @@ choke_point_dict = {(59, 28): (52, 35), (125, 137): (127, 128),
 all_base_chords = []
 
 
-# ___METHODS___
+# ___EXTENDED_METHODS___
 
 # Get the distance to a point from a point
 Point2D.dist = lambda self, other: sqrt((self.x - other.x)**2
@@ -112,6 +110,9 @@ Point2DI.__sub__ = lambda self, other: Point2DI(self.x-other.x, self.y-other.y) 
 # Add a Point2DI from a Point2DI
 Point2DI.__add__ = lambda self, other: Point2DI(self.x+other.x, self.y+other.y) \
     if isinstance(other, Point2DI) else Point2D(self.x+other.x, self.y+other.y)
+Point2D.__eq__ = lambda self, o: self.x == o.x and self.y == o.y \
+    if isinstance(o, (Point2D, Point2DI)) else False
+Point2DI.__eq__ = Point2D.__eq__
 
 
 class ScaiBackbone(IDABot):

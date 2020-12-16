@@ -1,13 +1,8 @@
-from typing import Union, Sequence, Callable
-
-from library import *
-
-from scai_backbone import siege_tanks_TYPEIDS
+from typing import Callable, Tuple
 
 from workplace import *
 
 
-# ZW
 class Troop:
     """A collection of military units."""
     __target: Point2D  # Common target for all units in troop
@@ -49,12 +44,12 @@ class Troop:
     prohibit_refill: bool  # - If troop will request more troops or not
 
     # Follow leader
-    __leash: Union[Callable, None]  # A function that moves unit towards leader position
-    leader: Union[Unit, None]  # When marching as one, follow this unit
+    __leash: Optional[Callable]  # A function that moves unit towards leader position
+    leader: Optional[Unit]  # When marching as one, follow this unit
 
     # (Attacking) Troop targets
     enemy_bases: List[BaseLocation] = []  # All potential enemy bases for attackers to attack
-    enemy_structures: Dict[Point2D, bool] = {}  # All known enemy structures
+    enemy_structures: Dict[Tuple[float, float], bool] = {}  # All known enemy structures
     # that needs to be destroyed to win and if they're visible or not
 
     # ---------- EVENTS ----------
@@ -88,7 +83,7 @@ class Troop:
 
         self.set_target(position)
 
-    def on_step(self, bot: IDABot):
+    def on_step(self, bot: IDABot) -> None:
         """Called each on_step() of IDABot."""
         # Remove all non idle units from the idle list
         self.already_idle = list(filter(
@@ -136,7 +131,7 @@ class Troop:
             if not self.bunkers.keys():
                 self.build_bunker(bot, self.target_pos)
 
-    def on_idle(self, unit: Unit, bot: IDABot):
+    def on_idle(self, unit: Unit, bot: IDABot) -> None:
         """Called each time a member is idle."""
         # if unit.unit_type.unit_typeid in repairer_TYPEIDS and self.repair_these:
         #     self.have_unit_repair(unit)
@@ -144,7 +139,7 @@ class Troop:
             self.already_idle.append(unit)
             self.on_just_idle(unit, bot)
 
-    def on_just_idle(self, unit: Unit, bot: IDABot): 
+    def on_just_idle(self, unit: Unit, bot: IDABot) -> None:
         """Called each time a member just became idle."""
         if self.under_attack and self.__order != self.__move_order:
             targeted_foe = self.get_suitable_to_close_foe_for(unit)
@@ -164,13 +159,18 @@ class Troop:
             elif not self.__leash or not self.leader == unit:
                 self.unit_execute_order(unit)
 
-    def on_member_reach_target(self, unit: Unit, bot: IDABot):
+    def on_member_reach_target(self, unit: Unit, bot: IDABot) -> None:
         """A member reaches target for first time."""
         if self.have_all_reached_target and self.prohibit_refill and self.is_attackers:
-            if self.target_pos in self.enemy_structures:
-                del self.enemy_structures[self.target_pos]
 
-            self.try_to_win(bot)
+            if Troop.has_enemy_structure_as_target(self.target_pos):
+                self.lost_enemy_structure(self.target_pos, bot)
+            else:
+                self.try_to_win(bot)
+
+            #     del self.enemy_structures[self.target_pos]
+            #
+            # self.try_to_win(bot)
 
         elif unit in self.tanks and unit not in self.tanks_siege \
                 and not (unit.has_target and unit.target == PLAYER_ENEMY):
@@ -182,7 +182,7 @@ class Troop:
                     unit.right_click(bunker)
                     self.bunkers[bunker].append(unit)
 
-    def on_damaged_member(self, unit: Unit, bot: IDABot):
+    def on_damaged_member(self, unit: Unit, bot: IDABot) -> None:
         """A member takes damage (might be dead)."""
         self.need_repair(unit)
 
@@ -261,7 +261,7 @@ class Troop:
         for trooper in self.get_units():
             self.__order(trooper)
 
-    def unit_execute_order(self, trooper: Unit):
+    def unit_execute_order(self, trooper: Unit) -> None:
         """Have a member execute order."""
         self.__order(trooper)
 
@@ -344,7 +344,7 @@ class Troop:
         else:
             return False
 
-    def set_target(self, target: Union[Point2D, Unit]):
+    def set_target(self, target: Union[Point2D, Unit]) -> None:
         """Sets target of troop."""
         self.__target = target
         self.not_reached_target = self.get_units()
@@ -382,7 +382,6 @@ class Troop:
                 location.to_i(), bunker)
             workplace.have_worker_construct(bunker, position)
 
-    # ZW
     def nearby_target(self, at: Union[Unit, Point2D]) -> bool:
         """Check if a unit is nearby target."""
         if isinstance(at, Unit):
@@ -392,7 +391,6 @@ class Troop:
         else:
             raise Exception("Can't do that!")
 
-    # ZW
     def nearby_leader(self, at: Union[Unit, Point2D]) -> bool:
         """Check if a unit is nearby leader."""
         if isinstance(at, Unit):
@@ -404,7 +402,6 @@ class Troop:
         else:
             raise Exception("Can't do that!")
 
-    # ZW
     def losing_leader(self, at: Union[Unit, Point2D]) -> bool:
         """Check if a unit is not nearby (with margin) leader."""
         if isinstance(at, Unit):
@@ -427,14 +424,13 @@ class Troop:
             elif not unit.is_flying:
                 self.leader = unit
 
-    # AW
     def have_soldiers_enter(self, bunker: Unit) -> None:
         """Have marines enter bunker."""
         for marine in self.marines[:4]:
             marine.right_click(bunker)
             self.bunkers[bunker].append(marine)
 
-    def get_suitable_to_close_foe_for(self, unit: Unit) -> Union[Unit, None]:
+    def get_suitable_to_close_foe_for(self, unit: Unit) -> Optional[Unit]:
         """Returns a suitable target for units if they're defending themself
         from attackers."""
         best_aggressor = get_closest(
@@ -459,7 +455,7 @@ class Troop:
         fixed = []
         for repair_this, repairers in self.repair_these.items():
             if repair_this.max_hit_points - repair_this.hit_points:
-                fixed.append(self.repair_these[repair_this])
+                fixed.append(repair_this)
             elif len(repairers) < 3:
                 unit.repair(repair_this)
                 break
@@ -467,13 +463,13 @@ class Troop:
         for unit in fixed:
             del self.repair_these[unit]
 
-    # ZW
-    def try_to_win(self, bot: IDABot):
+    def try_to_win(self, bot: IDABot) -> None:
         """Attackers will try to kill all enemy units."""
         if self.enemy_structures:
             # Attack closest structure
             self.march_together_units(get_closest(
-                [(pos, pos) for pos in self.enemy_structures],
+                [(Point2D(pos[0], pos[1]), Point2D(pos[0], pos[1]))
+                 for pos in self.enemy_structures],
                 self.leader.position if self.leader else self.target_pos))
         elif bot.remember_enemies:
             found = None
@@ -482,7 +478,7 @@ class Troop:
                     found = unit
                     break
             if found:
-                bot.remember_enemies.remove(unit)
+                bot.remember_enemies.remove(found)
 
             self.march_together_units(get_closest(
                 [(unit.position, unit.position) for unit in bot.remember_enemies],
@@ -492,18 +488,18 @@ class Troop:
     # Values that are trivial calculations but important for the object
 
     @property
-    def satisfied(self):
+    def satisfied(self) -> bool:
         """Return True if the troop wants more units."""
         return (self.prohibit_refill or
                 self.wants_marines <= 0 and self.wants_tanks <= 0)
 
     @property
-    def is_terminated(self):
+    def is_terminated(self) -> bool:
         """Return True if the troop is empty and can't refill."""
         return self.prohibit_refill and not self.get_units()
 
     @property
-    def have_all_reached_target(self):
+    def have_all_reached_target(self) -> bool:
         """Returns true if all members are close to target."""
         return not self.not_reached_target and  \
                all([unit.position.squared_dist(self.target_pos)
@@ -538,36 +534,37 @@ class Troop:
     # Focused on handling enemy targets for troops.
 
     @classmethod
-    def found_enemy_structure(cls, unit: Unit, bot: IDABot):
+    def found_enemy_structure(cls, unit: Unit, bot: IDABot) -> None:
         """Adds target structure to Troop targets."""
-        if unit.is_cloaked:
-            cls.enemy_structures[unit.position] = True
+        if unit.is_cloaked and unit.is_alive:
+            cls.enemy_structures[(unit.position.x, unit.position.y)] = True
             for base in bot.base_location_manager.base_locations:
                 if base.contains_position(unit.position) \
                         and base not in cls.enemy_bases:
                     cls.enemy_bases.append(base)
 
+            # Try to attack closest first
             for troop in attackers:
-                if troop.target_pos in cls.enemy_structures:
+                if cls.has_enemy_structure_as_target(troop.target_pos):
                     troop.try_to_win(bot)
 
     @classmethod
-    def check_validity_enemy_structures(cls, bot: IDABot):
+    def check_validity_enemy_structures(cls, bot: IDABot) -> None:
         """Confirm that enemy_structures are still valid targets."""
         remove_these = []
         for target, visible in cls.enemy_structures.items():
             if visible:
-                if not bot.map_tools.is_visible(round(target.x), round(target.y)):
+                if not bot.map_tools.is_visible(round(target[0]), round(target[1])):
                     cls.enemy_structures[target] = False
             else:
-                if bot.map_tools.is_visible(round(target.x), round(target.y)):
+                if bot.map_tools.is_visible(round(target[0]), round(target[1])):
                     cls.enemy_structures[target] = True
 
                     found = None
                     for unit in bot.get_all_units():
                         if unit.player == PLAYER_ENEMY:
-                            if unit.position.x == target.x \
-                                    and unit.position.y == target.y:
+                            if unit.position.x == target[0] \
+                                    and unit.position.y == target[1]:
                                 if unit.is_alive:
                                     found = unit
                                     break
@@ -579,29 +576,36 @@ class Troop:
             cls.lost_enemy_structure(target, bot)
 
     @classmethod
-    def lost_enemy_structure(cls, at: Union[Unit, Point2D], bot: IDABot):
+    def lost_enemy_structure(cls, at: Union[Unit, Point2D], bot: IDABot) -> None:
         """Removes target structure from Troop targets."""
         if isinstance(at, Unit):
             at = at.position
 
-        del cls.enemy_structures[at]
+        if cls.has_enemy_structure_as_target(at):
+            del cls.enemy_structures[(at.x, at.y)]
 
-        for base in cls.enemy_bases.copy():
-            if base.contains_position(at) and \
-                    not base.is_occupied_by_player(PLAYER_ENEMY):
-                cls.enemy_bases.remove(base)
+            for base in cls.enemy_bases.copy():
+                if base.contains_position(at) and \
+                        not base.is_occupied_by_player(PLAYER_ENEMY):
+                    cls.enemy_bases.remove(base)
 
-    @property
-    def get_leash(self):
-        return self.__leash
+            for troop in all_troops():
+                if troop.is_attackers \
+                        and troop.target_pos.x == at.x \
+                        and troop.target_pos.y == at.y:
+                    troop.try_to_win(bot)
 
-    @property
-    def get_order(self):
-        return self.__order
+    @classmethod
+    def has_enemy_structure_as_target(cls, at: Union[Point2DI, Unit]) -> bool:
+        """Returns True if troops have given target in enemy structures
+        targets."""
+        if isinstance(at, Unit):
+            at = at.position
 
-    @property
-    def get_target(self):
-        return self.__target
+        for enemy_structure in cls.enemy_structures:
+            if enemy_structure[0] == at.x and enemy_structure[1] == at.y:
+                return True
+        return False
 
 # ========== END OF TROOP ==========
 
@@ -611,19 +615,16 @@ defenders: List[Troop] = []
 attackers: List[Troop] = []
 
 
-# ZW
-def create_troop_defending(point: Point2D):
+def create_troop_defending(point: Point2D) -> None:
     """Create a new troop with given target that are suppose to defend."""
     defenders.append(Troop(point))
 
 
-# ZW
-def create_troop_attacking(point: Point2D):
+def create_troop_attacking(point: Point2D) -> None:
     """Creates a new troop with given target that are suppose to attack."""
     attackers.append(Troop(point, True))
 
 
-# ZW
 def remove_terminated_troops() -> None:
     """Remove empty troops from relevant lists."""
     i = 0
@@ -640,14 +641,12 @@ def remove_terminated_troops() -> None:
             i += 1
 
 
-# ZW
 def all_troops():
     """Returns all troops."""
     return attackers + defenders
 
 
-# ZW
-def marine_seeks_troop(position: Point2D) -> Union[Troop, None]:
+def marine_seeks_troop(position: Point2D) -> Optional[Troop]:
     """Find closest troop requiring a marine most."""
     closest = [None, None, None]
     distance = [0, 0, 0]
@@ -672,8 +671,7 @@ def marine_seeks_troop(position: Point2D) -> Union[Troop, None]:
     return closest[0] if closest[0] else closest[1] if closest[1] else closest[2]
 
 
-# ZW
-def tank_seeks_troop(position: Point2D) -> Union[Troop, None]:
+def tank_seeks_troop(position: Point2D) -> Optional[Troop]:
     """Find closest troop requiring a tank most."""
     closest = [None, None, None]
     distance = [0, 0, 0]
@@ -698,8 +696,7 @@ def tank_seeks_troop(position: Point2D) -> Union[Troop, None]:
     return closest[0] if closest[0] else closest[1] if closest[1] else closest[2]
 
 
-# ZW
-def bunker_seeks_troop(position: Point2D) -> Union[Troop, None]:
+def bunker_seeks_troop(position: Point2D) -> Optional[Troop]:
     """Return suitable troop for bunker."""
     for troop in all_troops():
         if not troop.is_attackers and troop.nearby_target(position):
@@ -707,8 +704,7 @@ def bunker_seeks_troop(position: Point2D) -> Union[Troop, None]:
     return None
 
 
-# ZW
-def find_unit_troop(unit: Unit) -> Union[Troop, None]:
+def find_unit_troop(unit: Unit) -> Optional[Troop]:
     """Return the troop this unit is in. If not any then null."""
     for troop in all_troops():
         if troop.has_unit(unit):
@@ -716,7 +712,7 @@ def find_unit_troop(unit: Unit) -> Union[Troop, None]:
     return None
 
 
-def closest_troop(pos: Point2D) -> Union[Troop, None]:
+def closest_troop(pos: Point2D) -> Optional[Troop]:
     """Finds the closest troop to a position"""
     closest = None
     distance = 0
