@@ -3,6 +3,14 @@ from armies import *
 from workplace import *
 
 
+# ---------- CONSTANTS -----------
+# Constants that are important to change behaviour of the bot.
+
+STRATEGY_FLUSH: bool = True
+DEFEND_FIRST_BASE: bool = True
+MAX_EXPANSIONS: int = 3
+NUMB_EXPANSIONS_BEFORE_ATTACKING: int = 1
+
 
 class MyAgent(ScaiBackbone):
     """A bot that uses IDABot to play and win Starcraft 2 matches."""
@@ -14,10 +22,11 @@ class MyAgent(ScaiBackbone):
         """Called on start up, passed from IDABot.on_game_start()."""
         ScaiBackbone.on_game_start(self)
 
-        # if self.side() == 'right':
-        #     create_troop_defending(Point2D(114, 46))
-        # else:
-        #     create_troop_defending(Point2D(38, 122))
+        if DEFEND_FIRST_BASE:
+            if self.side() == 'right':
+                create_troop_defending(Point2D(114, 46))
+            else:
+                create_troop_defending(Point2D(38, 122))
         create_workplace(self.base_location_manager
                          .get_player_starting_base_location(PLAYER_SELF), self)
 
@@ -46,7 +55,7 @@ class MyAgent(ScaiBackbone):
             if not troop.satisfied:
                 all_satisfied = False
 
-        if all_satisfied and len(workplaces) >= 1:
+        if all_satisfied and len(workplaces) >= NUMB_EXPANSIONS_BEFORE_ATTACKING:
             if self.side() == 'right':
                 create_troop_attacking(Point2D(108, 55))
             else:
@@ -64,7 +73,8 @@ class MyAgent(ScaiBackbone):
         if self.should_develop_vehicle:
             self.develop_vehicle()
 
-        self.scout()
+        if not scouts:
+            self.scout()
 
     # ---------- LOCAL EVENTS ----------
     # These are events handling individual units in special states only
@@ -133,14 +143,14 @@ class MyAgent(ScaiBackbone):
                 work.add(unit)
 
         # TODO: Good number?
-        if len(workplaces) < 1:
+        if len(workplaces) < MAX_EXPANSIONS:
             self.expansion()
 
-        elif all(map(lambda troop: troop.satisfied, defenders)) \
+        elif STRATEGY_FLUSH \
+                and all(map(lambda troop: troop.satisfied, defenders)) \
                 and attackers \
                 and all(map(lambda work: work.has_enough_scvs, workplaces)):
-            pass
-            # self.kill_em_all()
+            self.kill_em_all()
 
     def on_idle_my_unit(self, unit: Unit) -> None:
         """Called each time a unit is idle."""
@@ -187,7 +197,6 @@ class MyAgent(ScaiBackbone):
         # remove scout from scouts list
         if unit in scouts:
             remove_scout(unit)
-            self.scout()
 
     # ---------- GLOBAL EVENTS ----------
     # These events are triggered by all units,
@@ -412,14 +421,19 @@ class MyAgent(ScaiBackbone):
             scout = workplaces[-1].get_scout()
 
             if scout:
-                closest_base = self.closest_position(scout.position, all_base_chords)
+                closest_base = get_closest([Point2D(chord[0], chord[1])
+                                            for chord in all_base_chords],
+                                           scout.position)
                 scout.move(closest_base)
 
         if scouts and len(all_base_chords) > 0:
             scout = scouts[0]
-            closest_base = self.closest_position(scout.position, all_base_chords)
-            real_base = get_closest([(base.position, base) for base in \
-                                     self.base_location_manager.base_locations], closest_base)
+            closest_base = get_closest([Point2D(chord[0], chord[1])
+                                        for chord in all_base_chords],
+                                       scout.position)
+            real_base = get_closest([(base.position, base) for base in
+                                     self.base_location_manager.base_locations],
+                                    closest_base)
             # Move to closest base chord. If there or idle, go to next site.
             if scout.is_idle and Troop.enemy_structures:
                 if real_base.contains_position(closest_base) and real_base.contains_position(scout.position):
@@ -440,7 +454,7 @@ class MyAgent(ScaiBackbone):
         location = self.base_location_manager.get_next_expansion(PLAYER_SELF). \
             depot_position
 
-        if (self.troops_full() or not all_troops())\
+        if (self.troops_full() or not all_troops()) \
                 and can_afford(self, command_center_type) \
                 and not currently_building(self, command_center) \
                 and closest_workplace(location).get_suitable_builder():
@@ -449,9 +463,9 @@ class MyAgent(ScaiBackbone):
             worker = workplace.get_suitable_worker_and_remove()
 
             if worker:
-                new_workplace = create_workplace \
-                    (self.base_location_manager.get_next_expansion(PLAYER_SELF),
-                     self)
+                new_workplace = create_workplace(
+                    self.base_location_manager.get_next_expansion(PLAYER_SELF),
+                    self)
                 new_workplace.add(worker)
                 new_workplace.have_worker_construct(command_center_type,
                                                     location)
@@ -509,20 +523,20 @@ class MyAgent(ScaiBackbone):
         else:
             return 'left'
 
-    def closest_position(self, pos: Point2D, chord_list) -> Optional[Point2D]:
-        """Checks the closest base_location to a position."""
-        closest = None
-        distance = 0
-        for base_chords in chord_list:
-            base = Point2D(base_chords[0], base_chords[1])
-            # Point2D.dist(...) is a function in scai_backbone
-            if not closest or distance > base.dist(pos):
-                closest = base
-                distance = base.dist(pos)
+    # def closest_position(self, pos: Point2D, chord_list) -> Optional[Point2D]:
+    #     """Checks the closest base_location to a position."""
+    #     closest = None
+    #     distance = 0
+    #     for base_chords in chord_list:
+    #         base = Point2D(base_chords[0], base_chords[1])
+    #         # Point2D.dist(...) is a function in scai_backbone
+    #         if not closest or distance > base.dist(pos):
+    #             closest = base
+    #             distance = base.dist(pos)
+    #
+    #     return closest
 
-        return closest
-
-    def choke_points(self, coordinates) -> Point2D:  # AW
+    def choke_points(self, coordinates) -> Point2D:
         """Returns the appropriate choke point."""
         return Point2D(choke_point_dict[coordinates][0],
                        choke_point_dict[coordinates][1])

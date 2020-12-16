@@ -93,12 +93,16 @@ all_base_chords = []
 
 # ___EXTENDED_METHODS___
 
-# Get the distance to a point from a point
+# Get the distance to a point from a given point
 Point2D.dist = lambda self, other: sqrt((self.x - other.x)**2
                                         + (self.y - other.y)**2)
-# Get the distance to a point from a point
+Point2DI.dist = Point2D.dist
+
+# Get the squared distance to a point from a given point
 Point2D.squared_dist = lambda self, other: (self.x - other.x)**2 \
                                            + (self.y - other.y)**2
+Point2DI.squared_dist = Point2D.squared_dist
+
 # Translate a Point2D to a Point2DI
 Point2D.to_i = lambda self: Point2DI(round(self.x), round(self.y))
 # Translate a Point2DI to a Point2D

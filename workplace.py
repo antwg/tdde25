@@ -374,7 +374,9 @@ class Workplace:
                 and can_afford(bot, supply_depot) \
                 and not currently_building(bot, UNIT_TYPEID.TERRAN_SUPPLYDEPOT)\
                 and not self.is_building_unittype(supply_depot):
-            location = self.building_location_finder(bot, supply_depot)
+
+            location = self.building_location_finder(
+                bot, supply_depot, distance=20)
             self.have_worker_construct(supply_depot, location)
 
     def build_barrack(self, bot: IDABot) -> None:
@@ -388,7 +390,8 @@ class Workplace:
                     and not self.is_building_unittype(barrack)\
                     and len(self.miners) > 5:
 
-                location = self.building_location_finder(bot, barrack)
+                location = self.building_location_finder(
+                    bot, barrack, distance=35)
                 self.have_worker_construct(barrack, location)
 
         else:
@@ -398,7 +401,8 @@ class Workplace:
                     and not self.is_building_unittype(barrack)\
                     and len(self.miners) > 5:
 
-                location = self.building_location_finder(bot, barrack)
+                location = self.building_location_finder(
+                    bot, barrack, distance=35)
                 self.have_worker_construct(barrack, location)
 
     def build_engineering_bay(self, bot: IDABot) -> None:
@@ -409,12 +413,15 @@ class Workplace:
                 and not bot.have_one(engineering_bay) \
                 and not currently_building(bot, UNIT_TYPEID.TERRAN_ENGINEERINGBAY)\
                 and not self.is_building_unittype(engineering_bay):
+
             if bot.side() == 'right':
-                location = bot.building_placer.get_build_location_near(
-                    Point2DI(110, 23), engineering_bay)
+                build_anchor = Point2DI(110, 23)
             else:
-                location = bot.building_placer.get_build_location_near(
-                    Point2DI(41, 148), engineering_bay)
+                build_anchor = Point2DI(41, 148)
+
+            location = self.building_location_finder(
+                bot, engineering_bay, anchor=build_anchor
+            )
 
             self.have_worker_construct(engineering_bay, location)
 
@@ -427,12 +434,16 @@ class Workplace:
                 and not bot.have_one(armory) \
                 and not currently_building(bot, UNIT_TYPEID.TERRAN_ARMORY)\
                 and not self.is_building_unittype(armory):
+
+            build_anchor = None
             if bot.side() == 'right':
-                location = bot.building_placer.get_build_location_near(
-                    Point2DI(110, 23), armory)
+                build_anchor = Point2DI(110, 23)
             else:
-                location = bot.building_placer.get_build_location_near(
-                    Point2DI(41, 148), armory)
+                build_anchor = Point2DI(41, 148)
+
+            location = self.building_location_finder(
+                bot, armory, anchor=build_anchor
+            )
 
             self.have_worker_construct(armory, location)
 
@@ -468,8 +479,7 @@ class Workplace:
 
     def upgrade_command_center(self, cc: Unit, bot: IDABot) -> None:
         """Have given command center upgrade."""
-        if cc.is_idle  and not self.wants_scvs:
-
+        if cc.is_idle and not self.wants_scvs:
             if workplaces.index(self) == 0 \
                     and bot.minerals > 400 \
                     and bot.have_one(UNIT_TYPEID.TERRAN_BARRACKS):
@@ -490,7 +500,8 @@ class Workplace:
                     and not currently_building(bot, UNIT_TYPEID.TERRAN_FACTORY) \
                     and not self.is_building_unittype(factory)\
                     and len(self.miners) > 5:
-                location = self.building_location_finder(bot, factory_techlab)
+                location = self.building_location_finder(bot, factory_techlab,
+                                                         distance=39)
                 self.have_worker_construct(factory, location)
 
     def upgrade_factory(self, factory: Unit, bot: IDABot) -> None:
@@ -499,21 +510,18 @@ class Workplace:
         if can_afford(bot, factory_techlab):
             factory.train(factory_techlab)
 
-    def building_location_finder(self, bot: IDABot, unit_type: UnitType) -> Point2D:
+    def building_location_finder(self, bot: IDABot,
+                                 unit_type: UnitType,
+                                 anchor: Optional[Point2DI] = None,
+                                 distance: int = 0
+                                 ) -> Point2D:
         """Finds a suitable location to build a unit of given type"""
-        home_base = self.location.position.to_i()
-        if unit_type == UnitType(UNIT_TYPEID.TERRAN_FACTORY, bot) or \
-                unit_type == UnitType(UNIT_TYPEID.TERRAN_FACTORYTECHLAB, bot):
-            return bot.building_placer.get_build_location_near(home_base,
-                                                               unit_type, 39)
-        elif unit_type == UnitType(UNIT_TYPEID.TERRAN_BARRACKS, bot):
-            return bot.building_placer.get_build_location_near(home_base,
-                                                               unit_type, 35)
-        elif unit_type == UnitType(UNIT_TYPEID.TERRAN_SUPPLYDEPOT, bot):
-            return bot.building_placer.get_build_location_near(home_base,
-                                                               unit_type, 20)
-        else:
-            raise Exception("Found location is bad.")
+        if not anchor:
+            anchor = self.location.position.to_i()
+
+        return bot.building_placer.get_build_location_near(
+            anchor, unit_type, distance
+        )
 
     # ---------- HANDLERS ----------
     # Methods that builds structures.
@@ -733,13 +741,15 @@ def scv_seeks_workplace(pos: Point2D) -> Workplace:
     distance = [0, 0]
     for workplace in workplaces:
         if workplace.wants_scvs > 0:
-            if not closest[0] or distance[0] > workplace.location.position.dist(pos)\
-                    / workplace.wants_scvs:
+            if not closest[0] or distance[0] \
+                    > (workplace.location.position.dist(pos)
+                       / workplace.wants_scvs):
                 closest[0] = workplace
                 distance[0] = workplace.location.position.dist(pos) \
                     / workplace.wants_scvs
         else:
-            if not closest[1] or distance[1] > workplace.location.position.dist(pos):
+            if not closest[1] or distance[1] \
+                    > workplace.location.position.dist(pos):
                 closest[1] = workplace
                 distance[1] = workplace.location.position.dist(pos)
 

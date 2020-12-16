@@ -195,9 +195,8 @@ class Troop:
                             10)**2 > foe.position.squared_dist(unit.position):
                 self.foes_to_close.append(foe)
 
-        if not self.under_attack:
-            if not self.foes_to_close:
-                bot.try_to_scan(unit.position)
+        if not self.foes_to_close:
+            bot.try_to_scan(unit.position)
 
         self.under_attack = self.under_attack_wait
 
@@ -573,7 +572,7 @@ class Troop:
                         remove_these.append(target)
 
         for target in remove_these:
-            cls.lost_enemy_structure(target, bot)
+            cls.lost_enemy_structure(Point2D(target[0], target[1]), bot)
 
     @classmethod
     def lost_enemy_structure(cls, at: Union[Unit, Point2D], bot: IDABot) -> None:
@@ -714,11 +713,4 @@ def find_unit_troop(unit: Unit) -> Optional[Troop]:
 
 def closest_troop(pos: Point2D) -> Optional[Troop]:
     """Finds the closest troop to a position"""
-    closest = None
-    distance = 0
-    for troop in all_troops():
-        if not closest or distance > troop.target_pos.dist(pos):
-            closest = troop
-            distance = troop.target_pos.dist(pos)
-
-    return closest
+    return get_closest([(troop.target_pos, troop) for troop in all_troops()], pos)

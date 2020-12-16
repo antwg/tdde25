@@ -1,4 +1,4 @@
-from typing import Iterator, List, Optional, Any
+from typing import Iterator, List, Optional, Any, Union, Tuple
 
 from library import *
 
@@ -8,10 +8,19 @@ def get_closest_unit(units: Iterator[Unit], position: Point2D) -> Unit:
     return get_closest([(unit.position, unit) for unit in units], position)
 
 
-def get_closest(items: List[tuple], position: Point2D) -> Any:
+def get_closest(items: List[Union[Point2D, Point2DI,
+                                  Tuple[Union[Point2D, Point2DI],
+                                        Any]]],
+                position: Point2D) -> Any:
     """Get closest object in tuples to given point where the tuples first
-    element is it's position and the second is the object.
+    element is it's position and the second is the object to be returned. If
+    just a Point2D or Point2DI is provided, the closest is returned
     """
+    if not items:
+        return None
+    elif isinstance(items[0], (Point2D, Point2DI)):
+        items = [(item, item) for item in items]
+
     distance = 0
     closest = None
     for item in items:
