@@ -1,3 +1,7 @@
+"""
+Blah blah blah
+TODO: Complete the docstring!
+"""
 import os
 from math import sqrt
 
@@ -6,7 +10,21 @@ from library import *
 import personal
 
 
+# ---------- CONSTANTS -----------
+# Constants that are important to change behaviour of the bot, mostly when
+# it comes to strategy.
+
+STRATEGY_FLUSH: bool = True
+DEFEND_FIRST_BASE: bool = False
+MAX_EXPANSIONS: int = 3
+NUMB_BASES_BEFORE_ATTACKING: int = 1
+NUMB_BASES_BEFORE_INFANTRY_DEVELOPMENT: int = 2
+NUMB_BASES_BEFORE_VEHICLE_DEVELOPMENT: int = 3
+
+
 # ___LISTS_OF_UNIT_TYPEIDS___
+# These are all lists to make it easier to target specific units with
+# a specific attribute or type.
 
 terran_buildings_TYPEIDS = [
     UNIT_TYPEID.TERRAN_COMMANDCENTER, UNIT_TYPEID.TERRAN_ORBITALCOMMAND,
@@ -77,6 +95,7 @@ siege_tanks_TYPEIDS = [
 
 
 # ___COORDINATES___
+# Coordinates that are important for the bot to handle navigation.
 
 choke_point_dict = {(59, 28): (52, 35), (125, 137): (127, 128),
                     (58, 128): (67, 116), (125, 30): (114, 46),
@@ -92,54 +111,57 @@ all_base_chords = []
 
 
 # ___EXTENDED_METHODS___
+# Since the functionality of the API PyCommandCenter was lacking,
+# this section is meant to replace missing features that is
+# required to reduce unnecessary bugs.
 
-# Get the distance to a point from a given point
+# Get the distance to a point from a given point.
 Point2D.dist = lambda self, other: sqrt((self.x - other.x)**2
                                         + (self.y - other.y)**2)
 Point2DI.dist = Point2D.dist
 
-# Get the squared distance to a point from a given point
+# Get the squared distance to a point from a given point.
 Point2D.squared_dist = lambda self, other: (self.x - other.x)**2 \
                                            + (self.y - other.y)**2
 Point2DI.squared_dist = Point2D.squared_dist
 
-# Translate a Point2D to a Point2DI
+# Translate a Point2D to a Point2DI.
 Point2D.to_i = lambda self: Point2DI(round(self.x), round(self.y))
-# Translate a Point2DI to a Point2D
+# Translate a Point2DI to a Point2D.
 Point2DI.to_f = lambda self: Point2D(self.x, self.y)
 
-# Subtract a Point2DI from a Point2DI
+# Subtract a Point2DI from a Point2DI.
 Point2DI.__sub__ = lambda self, other: Point2DI(self.x-other.x, self.y-other.y) \
     if isinstance(other, Point2DI) else Point2D(self.x-other.x, self.y-other.y)
-# Add a Point2DI from a Point2DI
+# Add a Point2DI from a Point2DI.
 Point2DI.__add__ = lambda self, other: Point2DI(self.x+other.x, self.y+other.y) \
     if isinstance(other, Point2DI) else Point2D(self.x+other.x, self.y+other.y)
+
+# Compares two points to each other via their values.
 Point2D.__eq__ = lambda self, o: self.x == o.x and self.y == o.y \
     if isinstance(o, (Point2D, Point2DI)) else False
 Point2DI.__eq__ = Point2D.__eq__
 
 
 class ScaiBackbone(IDABot):
-    """Handles bootstrap of program and important startup functions."""
+    """
+    Handles bootstrap of program and important startup functions.
+    """
 
-    id: int  # The value of owner in it's units that corresponds to this player
+    id: int  # The value of owner in in units that represent this player.
 
     def __init__(self):
-        IDABot.__init__(self)
+        """
+        Initializes ScaiBackbone so that it works properly.
+        """
+        super().__init__()
         self.id = 0
-        self.remember_these = []
-        self.remember_mine = {}
-        self.remember_enemies = []
-        self.should_train_marines = []
-        self.should_train_tanks = []
-        self.should_develop_infantry = []
-        self.should_develop_vehicle = []
 
     def on_game_start(self) -> None:
-        IDABot.on_game_start(self)
+        super().on_game_start()
 
     def on_step(self) -> None:
-        IDABot.on_step(self)
+        super().on_step()
         if not self.id:
             for unit in self.get_my_units():
                 self.id = unit.owner
@@ -147,12 +169,14 @@ class ScaiBackbone(IDABot):
                 break
 
     def expansion(self) -> None:
-        """Builds new command center when needed."""
+        """
+        INTERFACE: Builds a new command center when needed.
+        """
         pass
 
     @classmethod
     def bootstrap(cls) -> None:
-        """Starts and runs a Starcraft 2 math with defined settings."""
+        """Starts and runs a StarCraft 2 math with defined settings."""
 
         coordinator = Coordinator(personal.game_dir)
 

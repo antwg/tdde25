@@ -1,4 +1,8 @@
-from typing import Callable, Tuple
+"""
+Blah blah blah
+TODO: Complete the docstring and commenting this file!
+"""
+from typing import Callable
 
 from workplace import *
 
@@ -500,7 +504,7 @@ class Troop:
     @property
     def have_all_reached_target(self) -> bool:
         """Returns true if all members are close to target."""
-        return not self.not_reached_target and  \
+        return not self.not_reached_target or \
                all([unit.position.squared_dist(self.target_pos)
                     <= self.target_radius**2
                     for unit in self.get_units()])
@@ -712,5 +716,5 @@ def find_unit_troop(unit: Unit) -> Optional[Troop]:
 
 
 def closest_troop(pos: Point2D) -> Optional[Troop]:
-    """Finds the closest troop to a position"""
+    """Finds the closest troop to a position."""
     return get_closest([(troop.target_pos, troop) for troop in all_troops()], pos)

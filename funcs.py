@@ -1,3 +1,7 @@
+"""
+Blah blah blah
+TODO: Complete the docstring and commenting this file!
+"""
 from typing import Iterator, List, Optional, Any, Union, Tuple
 
 from library import *
@@ -58,20 +62,23 @@ def get_mineral_fields(bot: IDABot, base_location: BaseLocation) -> List[Unit]: 
     return mineral_fields
 
 
-def get_my_types_units(bot: IDABot, searched_types: List[UnitTypeID]):
-    """Get all owned units with oe of the given unit types."""
+def get_my_type_units(
+        bot: IDABot,
+        searched_type: Union[UnitType, UNIT_TYPEID,
+                             List[Union[UnitType, UNIT_TYPEID]]]
+) -> List[Unit]:
+    """Get all my units with given unit type or types."""
+    if isinstance(searched_type, (UnitType, UNIT_TYPEID)):
+        searched_type = [searched_type]
+
+    if isinstance(searched_type[0], UNIT_TYPEID):
+        condition = lambda unit: unit.unit_type.unit_typeid in searched_type
+    else:
+        condition = lambda unit: unit.unit_type in searched_type
+
     units = []
     for unit in bot.get_my_units():
-        if unit.unit_type.unit_typeid in searched_types:
-            units.append(unit)
-    return units
-
-
-def get_my_type_units(bot: IDABot, searched_type: UnitTypeID):
-    """Get all owned units with given unit type."""
-    units = []
-    for unit in bot.get_my_units():
-        if unit.unit_type.unit_typeid == searched_type:
+        if condition(unit):
             units.append(unit)
     return units
 
@@ -87,7 +94,7 @@ def get_all_hidden_bases(bot: IDABot) -> List[BaseLocation]:
 
 
 def can_afford(bot: IDABot, unit_type: UnitType) -> bool:
-    """Returns whenever a unit is affordable. """
+    """Returns whether a bot can afford a unit of given type or not."""
     return bot.minerals >= unit_type.mineral_price \
         and bot.gas >= unit_type.gas_price \
         and bot.max_supply - bot.current_supply \
@@ -95,8 +102,8 @@ def can_afford(bot: IDABot, unit_type: UnitType) -> bool:
 
 
 def get_refinery(bot: IDABot, geyser: Unit) -> Optional[Unit]:
-    """
-    Returns: A refinery which is on top of unit `geyser` if any, None otherwise
+    """Returns a refinery which is on top of unit `geyser` if there is any,
+    returns None otherwise.
     """
 
     def squared_distance(p1: Point2D, p2: Point2D) -> float:
@@ -111,6 +118,6 @@ def get_refinery(bot: IDABot, geyser: Unit) -> Optional[Unit]:
 
 
 def currently_building(bot: IDABot, unit_type) -> bool:
-    """Checks if a unit is currently being built"""
+    """Checks if a unit of given unittype is currently being built."""
     return any([not unit.is_completed for unit in
                 get_my_type_units(bot, unit_type)])

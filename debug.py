@@ -1,3 +1,7 @@
+"""
+Blah blah blah
+TODO: Complete the docstring and commenting this file!
+"""
 from armies import *
 
 

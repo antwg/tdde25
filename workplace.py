@@ -1,3 +1,7 @@
+"""
+Blah blah blah
+TODO: Complete the docstring and commenting this file!
+"""
 from typing import Sequence, Dict, Union
 import random
 
@@ -224,7 +228,8 @@ class Workplace:
     # ---------- JOB: BUILDER ----------
     # Methods relevant for SCVs that are requested to build for workplace.
 
-    builders_targets: Dict[Unit, tuple]  # Key is builder and Tuple is (what: UnitType, where: Point2DI)
+    builders_targets: Dict[Unit, tuple]  # Key is builder and Tuple is
+    # (what: UnitType, where: Point2DI)
 
     def add_builder(self, worker: Unit) -> None:
         """Adds a builder and handles necessary operations."""
@@ -383,33 +388,22 @@ class Workplace:
         """Builds a barrack when necessary."""
         barrack = UnitType(UNIT_TYPEID.TERRAN_BARRACKS, bot)
 
-        if workplaces[0] == self:
-            if can_afford(bot, barrack) \
-                    and bot.have_one(UNIT_TYPEID.TERRAN_SUPPLYDEPOT) \
-                    and len(self.barracks) < self.max_number_of_barracks \
-                    and not self.is_building_unittype(barrack)\
-                    and len(self.miners) > 5:
+        if can_afford(bot, barrack) \
+                and bot.have_one(UNIT_TYPEID.TERRAN_SUPPLYDEPOT) \
+                and len(self.barracks) < self.max_number_of_barracks \
+                and not self.is_building_unittype(barrack)\
+                and len(self.miners) > 5:
 
-                location = self.building_location_finder(
-                    bot, barrack, distance=35)
-                self.have_worker_construct(barrack, location)
-
-        else:
-            if can_afford(bot, barrack) \
-                    and bot.have_one(UNIT_TYPEID.TERRAN_SUPPLYDEPOT) \
-                    and len(self.barracks) < self.small_number_of_barracks \
-                    and not self.is_building_unittype(barrack)\
-                    and len(self.miners) > 5:
-
-                location = self.building_location_finder(
-                    bot, barrack, distance=35)
-                self.have_worker_construct(barrack, location)
+            location = self.building_location_finder(
+                bot, barrack, distance=35)
+            self.have_worker_construct(barrack, location)
 
     def build_engineering_bay(self, bot: IDABot) -> None:
         """Builds an engineering bay."""
         engineering_bay = UnitType(UNIT_TYPEID.TERRAN_ENGINEERINGBAY, bot)
+
         if can_afford(bot, engineering_bay) \
-                and len(workplaces) >= 2 \
+                and len(workplaces) >= NUMB_BASES_BEFORE_INFANTRY_DEVELOPMENT \
                 and not bot.have_one(engineering_bay) \
                 and not currently_building(bot, UNIT_TYPEID.TERRAN_ENGINEERINGBAY)\
                 and not self.is_building_unittype(engineering_bay):
@@ -429,13 +423,12 @@ class Workplace:
         """Builds a armory."""
         armory = UnitType(UNIT_TYPEID.TERRAN_ARMORY, bot)
         if can_afford(bot, armory) \
-                and len(workplaces) >= 3 \
+                and len(workplaces) >= NUMB_BASES_BEFORE_VEHICLE_DEVELOPMENT \
                 and bot.have_one(UNIT_TYPEID.TERRAN_FACTORY) \
                 and not bot.have_one(armory) \
                 and not currently_building(bot, UNIT_TYPEID.TERRAN_ARMORY)\
                 and not self.is_building_unittype(armory):
 
-            build_anchor = None
             if bot.side() == 'right':
                 build_anchor = Point2DI(110, 23)
             else:
@@ -510,11 +503,13 @@ class Workplace:
         if can_afford(bot, factory_techlab):
             factory.train(factory_techlab)
 
-    def building_location_finder(self, bot: IDABot,
-                                 unit_type: UnitType,
-                                 anchor: Optional[Point2DI] = None,
-                                 distance: int = 0
-                                 ) -> Point2D:
+    def building_location_finder(
+            self,
+            bot: IDABot,
+            unit_type: UnitType,
+            anchor: Optional[Point2DI] = None,
+            distance: int = 0
+    ) -> Point2D:
         """Finds a suitable location to build a unit of given type"""
         if not anchor:
             anchor = self.location.position.to_i()
@@ -648,31 +643,29 @@ class Workplace:
 
     @property
     def max_number_of_barracks(self) -> int:
-        """return the max number of barracks"""
-        return min(1 * len(workplaces), 6)
+        """Return the max number of barracks."""
+        if workplaces[0] == self:
+            return min(1 * len(workplaces), 6)
+        else:
+            return 1
 
     @property
     def max_number_of_factories(self) -> int:
-        """Return the max number of factories"""
+        """Return the max number of factories."""
         return min((1 * len(workplaces)), 2)
-
-    @property
-    def small_number_of_barracks(self) -> int:
-        """return number of barracks for base expansions"""
-        return 1
 
     # ---------- MISC ----------
     # Other needed functions.
 
     def get_scout(self) -> Optional[Unit]:
-        """Returns a suitable scout (worker)"""
+        """Returns a suitable scout (worker)."""
         worker = self.get_suitable_worker_and_remove()
         if worker:
             add_scout(worker)
         return worker
 
     def flush_units(self) -> List[Unit]:
-        """Remove all but a few workers (not structures)."""
+        """Remove all but a few workers (not structures) and return them."""
         free = []
         i = 0
         while i < len(self.get_units()):
@@ -708,12 +701,12 @@ workplaces = []
 
 
 def add_scout(scout: Unit) -> None:
-    """Adds a scout to scouts list"""
+    """Adds a scout to scouts list."""
     scouts.append(scout)
 
 
 def remove_scout(scout: Unit) -> None:
-    """removes a scout from scouts list"""
+    """removes a scout from scouts list."""
     scouts.remove(scout)
 
 
@@ -724,7 +717,7 @@ def create_workplace(bot: IDABot, location: BaseLocation) -> Workplace:
 
 
 def closest_workplace(pos: Point2D) -> Workplace:
-    """Checks the closest workplace to a position"""
+    """Checks the closest workplace to a position."""
     closest = None
     distance = 0
     for workplace in workplaces:
@@ -736,7 +729,7 @@ def closest_workplace(pos: Point2D) -> Workplace:
 
 
 def scv_seeks_workplace(pos: Point2D) -> Workplace:
-    """Checks the closest workplace to a position"""
+    """Checks the closest workplace to a position."""
     closest = [None, None]
     distance = [0, 0]
     for workplace in workplaces:
@@ -757,6 +750,7 @@ def scv_seeks_workplace(pos: Point2D) -> Workplace:
 
 
 def find_unit_workplace(unit: Unit) -> Optional[Workplace]:
+    """Find and returns the workplace this unit belongs to."""
     for workplace in workplaces:
         if workplace.has_unit(unit):
             return workplace
