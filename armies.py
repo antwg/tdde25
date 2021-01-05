@@ -1,6 +1,5 @@
 """
-Blah blah blah
-TODO: Complete the docstring and commenting this file!
+File handles the class Troop and functions tied to it. Troop handles both offencive and defencive units, and strategies.
 """
 from typing import Callable
 
