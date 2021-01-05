@@ -1,6 +1,5 @@
 """
-Blah blah blah
-TODO: Complete the docstring!
+File is the body of the bot and handles bigger functions.
 """
 from debug import *
 from armies import *

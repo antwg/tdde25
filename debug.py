@@ -1,6 +1,5 @@
 """
-Blah blah blah
-TODO: Complete the docstring and commenting this file!
+File handles debugs (shows information).
 """
 from armies import *
 

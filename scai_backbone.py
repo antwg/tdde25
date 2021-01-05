@@ -1,6 +1,5 @@
 """
-Blah blah blah
-TODO: Complete the docstring!
+File handles core game mechanics, and constants.
 """
 import os
 from math import sqrt

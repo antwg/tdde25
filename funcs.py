@@ -1,6 +1,5 @@
 """
-Blah blah blah
-TODO: Complete the docstring and commenting this file!
+File handles small but useful functions.
 """
 from typing import Iterator, List, Optional, Any, Union, Tuple
 

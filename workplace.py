@@ -1,6 +1,6 @@
 """
-Blah blah blah
-TODO: Complete the docstring and commenting this file!
+File handles the class Workplace and functions tied to it. Workplace is
+used to handle workers tied to baselocations.
 """
 from typing import Sequence, Dict, Union
 import random
